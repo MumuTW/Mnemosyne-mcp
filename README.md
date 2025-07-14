@@ -1,5 +1,9 @@
 # Mnemosyne MCP
 
+[![CI](https://github.com/your-username/Mnemosyne-mcp/workflows/CI/badge.svg)](https://github.com/your-username/Mnemosyne-mcp/actions)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > 主動的、有狀態的軟體知識圖譜引擎
 
 Mnemosyne MCP 是一個為 AI 代理和人類開發者設計的**「全知開發夥伴」**，通過將軟體專案的所有元素模型化為即時的、可查詢的知識圖譜，為開發的每一個環節提供精準的上下文、預測性的洞察和強制性的護欄。
