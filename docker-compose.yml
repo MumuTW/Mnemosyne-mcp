@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: mnemosyne-falkordb
+    ports:
+      - "6379:6379"
+    volumes:
+      - falkordb_data:/data
+      - ./scripts/seed.cypher:/docker-entrypoint-initdb.d/seed.cypher:ro
+    environment:
+      - FALKORDB_ARGS=--loadmodule /usr/lib/redis/modules/falkordb.so
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - mnemosyne-network
+
+  falkordb-browser:
+    image: falkordb/falkordb-browser:latest
+    container_name: mnemosyne-browser
+    ports:
+      - "3000:3000"
+    environment:
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    networks:
+      - mnemosyne-network
+
+  mnemosyne-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mnemosyne-api
+    ports:
+      - "8000:8000"
+      - "50051:50051"  # gRPC port
+    environment:
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+      - FALKORDB_DATABASE=mnemosyne
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=development
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./logs:/app/logs
+    networks:
+      - mnemosyne-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  falkordb_data:
+    driver: local
+
+networks:
+  mnemosyne-network:
+    driver: bridge
