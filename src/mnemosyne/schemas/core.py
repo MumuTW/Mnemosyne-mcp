@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 class EntityType(str, Enum):
@@ -41,13 +41,7 @@ class BaseEntity(BaseModel):
     # 擴展屬性，用於存儲額外的元數據
     extra: Dict[str, Any] = Field(default_factory=dict, description="擴展屬性")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
     @computed_field
     @property
@@ -82,6 +76,7 @@ class File(BaseEntity):
     entity_type: EntityType = Field(default=EntityType.FILE, frozen=True)
     path: str = Field(description="文件路徑")
     extension: str = Field(description="文件擴展名")
+    content: Optional[str] = Field(default=None, description="文件內容")
     size_bytes: Optional[int] = Field(default=None, description="文件大小（字節）")
     hash: Optional[str] = Field(default=None, description="文件內容哈希")
     encoding: str = Field(default="utf-8", description="文件編碼")
