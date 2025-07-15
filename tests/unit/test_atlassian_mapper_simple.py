@@ -4,7 +4,6 @@ AtlassianMapper 簡化測試
 測試 Atlassian 數據映射器的基本功能。
 """
 
-
 from mnemosyne.clients.atlassian import ConfluencePage, JiraIssue
 from mnemosyne.mappers.atlassian_mapper_simple import AtlassianMapper
 from mnemosyne.schemas.core import EntityType

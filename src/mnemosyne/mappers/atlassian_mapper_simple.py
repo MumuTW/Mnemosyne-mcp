@@ -146,6 +146,33 @@ class AtlassianMapper:
         return entities, relationships
 
     @staticmethod
+    def create_space_relationship(
+        page_entity: BaseEntity, space_name: str
+    ) -> Optional[BaseRelationship]:
+        """創建 Page 與 Space 的關係"""
+        try:
+            space_entity_id = f"confluence_space_{space_name}"
+
+            return BaseRelationship(
+                id=f"rel_{page_entity.id}_{space_entity_id}",
+                source_id=page_entity.id,
+                target_id=space_entity_id,
+                relationship_type=RelationshipType.BELONGS_TO,
+                extra={
+                    "relationship_type": "page_to_space",
+                    "space_name": space_name,
+                },
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to create space relationship",
+                page_entity_id=page_entity.id,
+                space_name=space_name,
+                error=str(e),
+            )
+            return None
+
+    @staticmethod
     def batch_map_confluence_pages(
         pages: List[ConfluencePage],
     ) -> Tuple[List[BaseEntity], List[BaseRelationship]]:
@@ -157,6 +184,14 @@ class AtlassianMapper:
             try:
                 entity = AtlassianMapper.confluence_page_to_entity(page)
                 entities.append(entity)
+
+                # 創建空間關係
+                if page.space:
+                    space_rel = AtlassianMapper.create_space_relationship(
+                        entity, page.space
+                    )
+                    if space_rel:
+                        relationships.append(space_rel)
 
             except Exception as e:
                 logger.error(
