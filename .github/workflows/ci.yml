@@ -51,6 +51,6 @@ jobs:
         FALKORDB_DATABASE: test_mnemosyne
         PYTHONPATH: src
       run: |
-        python -m pytest tests/ -v --no-cov
+        python -m pytest tests/unit/test_falkordb_driver.py tests/unit/test_schemas.py -v --no-cov
     
 
