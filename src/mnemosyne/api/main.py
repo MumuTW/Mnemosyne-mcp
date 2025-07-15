@@ -6,17 +6,17 @@ FastAPI 主應用
 
 import time
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from ..core.config import get_settings, Settings, validate_config
-from ..core.logging import setup_logging, get_logger, LoggingMiddleware
+from ..core.config import Settings, get_settings, validate_config
+from ..core.logging import LoggingMiddleware, get_logger, setup_logging
 from ..drivers.falkordb_driver import FalkorDBDriver
-from ..interfaces.graph_store import GraphStoreClient, ConnectionError
-from ..schemas.api import HealthResponse, ErrorResponse, HealthStatus
+from ..interfaces.graph_store import ConnectionError, GraphStoreClient
+from ..schemas.api import ErrorResponse, HealthResponse, HealthStatus
 
 # 全局變數
 graph_client: GraphStoreClient = None
@@ -28,29 +28,31 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """
     應用生命週期管理
-    
+
     處理應用啟動和關閉時的初始化和清理工作。
     """
     global graph_client, app_start_time
-    
+
     # 啟動時初始化
     settings = get_settings()
-    
+
     # 設置日誌
     setup_logging(
         level=settings.logging.level,
         format_type=settings.logging.format,
-        handlers_config=settings.logging.handlers
+        handlers_config=settings.logging.handlers,
     )
-    
-    logger.info("Starting Mnemosyne MCP API", version="0.1.0", environment=settings.environment)
-    
+
+    logger.info(
+        "Starting Mnemosyne MCP API", version="0.1.0", environment=settings.environment
+    )
+
     # 驗證配置
     config_errors = validate_config(settings)
     if config_errors:
         logger.error("Configuration validation failed", errors=config_errors)
         raise RuntimeError(f"Configuration errors: {config_errors}")
-    
+
     # 初始化圖資料庫客戶端
     try:
         db_config = settings.database.to_connection_config()
@@ -63,22 +65,22 @@ async def lifespan(app: FastAPI):
         if not settings.is_development:
             raise
         graph_client = None
-    
+
     app_start_time = time.time()
     logger.info("Mnemosyne MCP API started successfully")
-    
+
     yield
-    
+
     # 關閉時清理
     logger.info("Shutting down Mnemosyne MCP API")
-    
+
     if graph_client:
         try:
             await graph_client.disconnect()
             logger.info("Graph database connection closed")
         except Exception as e:
             logger.error("Error closing graph database connection", error=str(e))
-    
+
     logger.info("Mnemosyne MCP API shutdown complete")
 
 
@@ -90,24 +92,38 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
+# 添加中間件
+settings = get_settings()
+
+# CORS 中間件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.api.cors_origins,
+    allow_credentials=settings.api.cors_allow_credentials,
+    allow_methods=settings.api.cors_allow_methods,
+    allow_headers=settings.api.cors_allow_headers,
+)
+
+# 日誌中間件
+app.add_middleware(LoggingMiddleware)
 
 
 def get_graph_client() -> GraphStoreClient:
     """
     依賴注入：獲取圖資料庫客戶端
-    
+
     Returns:
         GraphStoreClient: 圖資料庫客戶端實例
-        
+
     Raises:
         HTTPException: 當資料庫連接不可用時
     """
     if graph_client is None:
         raise HTTPException(
-            status_code=503,
-            detail="Graph database connection not available"
+            status_code=503, detail="Graph database connection not available"
         )
     return graph_client
 
@@ -115,30 +131,11 @@ def get_graph_client() -> GraphStoreClient:
 def get_current_settings() -> Settings:
     """
     依賴注入：獲取當前配置
-    
+
     Returns:
         Settings: 配置實例
     """
     return get_settings()
-
-
-# 添加 CORS 中間件
-@app.on_event("startup")
-async def setup_middleware():
-    """設置中間件"""
-    settings = get_settings()
-    
-    # CORS 中間件
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.api.cors_origins,
-        allow_credentials=settings.api.cors_allow_credentials,
-        allow_methods=settings.api.cors_allow_methods,
-        allow_headers=settings.api.cors_allow_headers,
-    )
-    
-    # 日誌中間件
-    app.add_middleware(LoggingMiddleware)
 
 
 # 全局異常處理器
@@ -151,22 +148,24 @@ async def connection_error_handler(request, exc: ConnectionError):
         content=ErrorResponse(
             error="DatabaseConnectionError",
             message="Unable to connect to graph database",
-            details={"original_error": str(exc)}
-        ).model_dump()
+            details={"original_error": str(exc)},
+        ).model_dump(),
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc: Exception):
     """處理一般異常"""
-    logger.error("Unhandled exception", error=str(exc), path=request.url.path, exc_info=True)
+    logger.error(
+        "Unhandled exception", error=str(exc), path=request.url.path, exc_info=True
+    )
     return JSONResponse(
         status_code=500,
         content=ErrorResponse(
             error="InternalServerError",
             message="An unexpected error occurred",
-            details={"type": type(exc).__name__}
-        ).model_dump()
+            details={"type": type(exc).__name__},
+        ).model_dump(),
     )
 
 
@@ -180,38 +179,38 @@ async def root():
         "description": "主動的、有狀態的軟體知識圖譜引擎",
         "docs_url": "/docs",
         "health_url": "/health",
-        "status": "running"
+        "status": "running",
     }
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check(
     client: GraphStoreClient = Depends(get_graph_client),
-    settings: Settings = Depends(get_current_settings)
+    settings: Settings = Depends(get_current_settings),
 ):
     """
     健康檢查端點
-    
+
     檢查服務和依賴組件的健康狀態。
     """
-    global app_start_time
-    
+
     logger.debug("Health check requested")
-    
+
     # 計算運行時間
     uptime_seconds = time.time() - app_start_time if app_start_time else 0
-    
+
     # 檢查圖資料庫健康狀態
     db_health = await client.healthcheck()
-    
+
     # 獲取內存使用情況
     try:
         import psutil
+
         process = psutil.Process()
         memory_usage_mb = process.memory_info().rss / 1024 / 1024
     except ImportError:
         memory_usage_mb = None
-    
+
     # 組件狀態
     components = {
         "database": db_health,
@@ -219,24 +218,24 @@ async def health_check(
             "status": "healthy",
             "host": settings.api.host,
             "port": settings.api.port,
-            "environment": settings.environment
-        }
+            "environment": settings.environment,
+        },
     }
-    
+
     # 確定整體健康狀態
     overall_status = HealthStatus.HEALTHY
     if db_health.get("status") != "healthy":
         overall_status = HealthStatus.UNHEALTHY
-    
+
     response = HealthResponse(
         status=overall_status,
         uptime_seconds=uptime_seconds,
         memory_usage_mb=memory_usage_mb,
-        components=components
+        components=components,
     )
-    
+
     logger.debug("Health check completed", status=overall_status.value)
-    
+
     return response
 
 
@@ -247,7 +246,7 @@ async def get_version():
         "version": "0.1.0",
         "build": "sprint-0",
         "api_version": "v1",
-        "environment": get_settings().environment
+        "environment": get_settings().environment,
     }
 
 
@@ -260,7 +259,7 @@ async def get_version():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     settings = get_settings()
     uvicorn.run(
         "mnemosyne.api.main:app",
