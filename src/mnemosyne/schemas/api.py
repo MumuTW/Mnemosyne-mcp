@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TaskStatus(str, Enum):
@@ -45,13 +45,7 @@ class HealthResponse(BaseModel):
     uptime_seconds: Optional[float] = Field(default=None, description="運行時間（秒）")
     memory_usage_mb: Optional[float] = Field(default=None, description="內存使用（MB）")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ErrorResponse(BaseModel):
@@ -63,12 +57,7 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="錯誤時間")
     trace_id: Optional[str] = Field(default=None, description="追蹤ID")
 
-    class Config:
-        """Pydantic 配置"""
-
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict()
 
 
 class IngestRequest(BaseModel):
@@ -108,13 +97,7 @@ class IngestResponse(BaseModel):
     # 進度信息
     progress_url: Optional[str] = Field(default=None, description="進度查詢URL")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class TaskStatusResponse(BaseModel):
@@ -142,13 +125,7 @@ class TaskStatusResponse(BaseModel):
     entities_created: Optional[int] = Field(default=None, description="創建實體數")
     relationships_created: Optional[int] = Field(default=None, description="創建關係數")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class SearchRequest(BaseModel):
