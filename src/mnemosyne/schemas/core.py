@@ -23,6 +23,11 @@ class EntityType(str, Enum):
     THIRD_PARTY_PACKAGE = "ThirdPartyPackage"
     VARIABLE = "Variable"
     IMPORT = "Import"
+    # Atlassian 相關實體類型
+    ISSUE = "Issue"
+    DOCUMENT = "Document"
+    PROJECT = "Project"
+    PERSON = "Person"
 
 
 class BaseEntity(BaseModel):
