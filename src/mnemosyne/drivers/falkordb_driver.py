@@ -288,7 +288,7 @@ class FalkorDBDriver(GraphStoreClient):
                 similarity_function=similarity_function,
             )
 
-            await self.execute_query(query)
+            result = await self.execute_query(query)
 
             self.logger.info(
                 "Vector index created successfully",
@@ -357,16 +357,12 @@ class FalkorDBDriver(GraphStoreClient):
                         {
                             "node": row["node"],
                             "similarity_score": float(row["score"]),
-                            "node_id": (
-                                row["node"].get("id")
-                                if isinstance(row["node"], dict)
-                                else None
-                            ),
-                            "properties": (
-                                row["node"].get("properties", {})
-                                if isinstance(row["node"], dict)
-                                else {}
-                            ),
+                            "node_id": row["node"].get("id")
+                            if isinstance(row["node"], dict)
+                            else None,
+                            "properties": row["node"].get("properties", {})
+                            if isinstance(row["node"], dict)
+                            else {},
                         }
                     )
 
