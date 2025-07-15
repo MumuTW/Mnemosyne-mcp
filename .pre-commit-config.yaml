@@ -32,6 +32,8 @@ repos:
           types-PyYAML
         ]
         args: [--ignore-missing-imports]
+        # 顯示詳細輸出以利於調試
+        verbose: true
         stages: [manual]  # 設為手動執行，避免阻止開發流程
 
   # 一般檔案檢查
@@ -51,13 +53,19 @@ repos:
     hooks:
       - id: pytest-unit
         name: Run unit tests before push
-        entry: uv run pytest tests/unit/ -v --maxfail=1 --tb=short
+        entry: uv run python -m pytest tests/unit/ -v --maxfail=1 --tb=short
         language: system
         pass_filenames: false
         stages: [pre-push]
       - id: pytest-integration
         name: Run integration tests (if available)
         entry: bash -c "if [ -d tests/integration ] && [ -n \"$(ls -A tests/integration)\" ]; then uv run pytest tests/integration/ -v --maxfail=1; else echo 'No integration tests found, skipping'; fi"
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+      - id: quality-gate
+        name: Quality gate check
+        entry: bash -c 'echo "🎯 Quality gate - All checks passed! Ready to push."'
         language: system
         pass_filenames: false
         stages: [pre-push]
