@@ -20,10 +20,10 @@ help:
 
 # Installation
 install:
-	pip3 install -r requirements-dev.txt
+	uv pip install -e ".[dev]"
 
 install-prod:
-	pip3 install -r requirements.txt
+	uv pip install -e .
 
 # Testing
 test:
@@ -86,16 +86,19 @@ ci:
 	@echo "✅ CI simulation completed successfully!"
 
 # Quick development setup
-dev-setup: install
+dev-setup:
 	@echo "Setting up development environment..."
-	cp .env.example .env
+	uv venv --python 3.10
+	uv pip install -e ".[dev]"
+	cp .env.example .env 2>/dev/null || echo "No .env.example found, continuing..."
 	mkdir -p logs
 	@echo "✅ Development environment ready!"
 	@echo ""
 	@echo "Next steps:"
-	@echo "  1. Start FalkorDB: make docker-up"
-	@echo "  2. Run diagnostics: make doctor"
-	@echo "  3. Start API server: make serve"
+	@echo "  1. Activate venv: source .venv/bin/activate"
+	@echo "  2. Start FalkorDB: make docker-up"
+	@echo "  3. Run diagnostics: make doctor"
+	@echo "  4. Start API server: make serve"
 
 # Sprint 0 verification
 sprint0-verify:
