@@ -26,8 +26,32 @@ sysctl vm.overcommit_memory
 ### 其他生產環境建議
 
 ```bash
-# 禁用 Transparent Huge Pages (THP)
+# 禁用 Transparent Huge Pages (THP) - 持久化設定
+# 1. 立即禁用
 echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+
+# 2. 持久化設定 (重啟後生效)
+echo 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' | sudo tee -a /etc/rc.local
+sudo chmod +x /etc/rc.local
+
+# 3. 或使用 systemd service (推薦)
+sudo tee /etc/systemd/system/disable-thp.service > /dev/null <<EOF
+[Unit]
+Description=Disable Transparent Huge Pages (THP)
+DefaultDependencies=false
+After=sysinit.target local-fs.target
+Before=mongod.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+
+[Install]
+WantedBy=basic.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable disable-thp.service
 
 # 設定 TCP backlog
 echo 'net.core.somaxconn = 65535' | sudo tee -a /etc/sysctl.conf
@@ -63,16 +87,15 @@ docker exec mnemosyne-falkordb redis-cli ping
 version: '3.8'
 services:
   falkordb:
-    image: falkordb/falkordb:latest
+    image: falkordb/falkordb:2.12.9  # 使用具體版本，避免 latest 標籤風險
     restart: unless-stopped
     sysctls:
       - net.core.somaxconn=65535
     ulimits:
       memlock: -1
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
+    # Docker Compose 記憶體限制語法 (非 Swarm 模式)
+    mem_limit: 4G
+    mem_reservation: 2G
+    # 注意: deploy.resources 僅適用於 Docker Swarm (docker stack deploy)
+    # 對於 docker-compose up，請使用 mem_limit 和 mem_reservation
 ```

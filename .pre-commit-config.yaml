@@ -32,7 +32,7 @@ repos:
           types-PyYAML
         ]
         args: [--ignore-missing-imports]
-        # 暫時允許失敗，但會顯示問題
+        # 顯示詳細輸出以利於調試
         verbose: true
         stages: [manual]  # 暫時設為手動執行，避免阻止開發流程
 
