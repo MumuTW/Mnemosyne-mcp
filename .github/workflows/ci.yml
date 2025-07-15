@@ -38,11 +38,12 @@ jobs:
       run: |
         uv pip install --system -e ".[dev]"
 
-    - name: Run linting
+    - name: Run linting (strict mode)
       run: |
-        python -m black --check src tests || true
-        python -m isort --check-only src tests || true
-        python -m flake8 src tests --max-line-length=88 --extend-ignore=E203,W503 || true
+        echo "🔍 Running code quality checks..."
+        python -m black --check src tests
+        python -m isort --check-only src tests
+        python -m flake8 src tests --max-line-length=88 --extend-ignore=E203,W503
 
 
     - name: Run tests
