@@ -8,6 +8,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
+import aiohttp
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -183,6 +184,48 @@ async def root():
     }
 
 
+async def check_mcp_atlassian_health(url: str, timeout: int = 5) -> Dict[str, Any]:
+    """
+    檢查 MCP Atlassian 服務健康狀態
+
+    Args:
+        url: MCP Atlassian 服務 URL
+        timeout: 超時時間（秒）
+
+    Returns:
+        Dict[str, Any]: 健康狀態資訊
+    """
+    try:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=timeout)
+        ) as session:
+            async with session.get(f"{url}/health") as response:
+                if response.status == 200:
+                    return {
+                        "status": "healthy",
+                        "url": url,
+                        "response_time_ms": None,  # 可以在這裡測量響應時間
+                    }
+                else:
+                    return {
+                        "status": "unhealthy",
+                        "url": url,
+                        "error": f"HTTP {response.status}",
+                    }
+    except aiohttp.ClientError as e:
+        return {
+            "status": "unhealthy",
+            "url": url,
+            "error": f"Connection error: {str(e)}",
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "url": url,
+            "error": f"Unexpected error: {str(e)}",
+        }
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check(
     client: GraphStoreClient = Depends(get_graph_client),
@@ -202,6 +245,11 @@ async def health_check(
     # 檢查圖資料庫健康狀態
     db_health = await client.healthcheck()
 
+    # 檢查 MCP Atlassian 服務健康狀態
+    mcp_atlassian_health = await check_mcp_atlassian_health(
+        settings.mcp_atlassian.service_url, settings.mcp_atlassian.health_check_timeout
+    )
+
     # 獲取內存使用情況
     try:
         import psutil
@@ -214,6 +262,7 @@ async def health_check(
     # 組件狀態
     components = {
         "database": db_health,
+        "mcp_atlassian": mcp_atlassian_health,
         "api": {
             "status": "healthy",
             "host": settings.api.host,
@@ -226,6 +275,9 @@ async def health_check(
     overall_status = HealthStatus.HEALTHY
     if db_health.get("status") != "healthy":
         overall_status = HealthStatus.UNHEALTHY
+    elif mcp_atlassian_health.get("status") != "healthy":
+        # MCP Atlassian 服務不健康時標記為 degraded，但不是完全不健康
+        overall_status = HealthStatus.DEGRADED
 
     response = HealthResponse(
         status=overall_status,

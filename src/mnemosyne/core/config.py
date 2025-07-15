@@ -107,6 +107,48 @@ class FeatureSettings(BaseSettings):
     enable_debug_queries: bool = Field(default=True)
 
 
+class MCPAtlassianSettings(BaseSettings):
+    """MCP Atlassian 配置"""
+
+    model_config = SettingsConfigDict(env_prefix="MCP_", case_sensitive=False)
+
+    # 服務端點
+    service_url: str = Field(default="http://mcp-atlassian:8001")
+    health_check_timeout: int = Field(default=5)
+
+    # Confluence 配置
+    confluence_url: Optional[str] = Field(default=None)
+    confluence_username: Optional[str] = Field(default=None)
+    confluence_api_token: Optional[str] = Field(default=None)
+
+    # Jira 配置
+    jira_url: Optional[str] = Field(default=None)
+    jira_username: Optional[str] = Field(default=None)
+    jira_api_token: Optional[str] = Field(default=None)
+
+    # 功能配置
+    read_only_mode: bool = Field(default=True)
+    enabled_tools: List[str] = Field(
+        default_factory=lambda: ["confluence_search", "jira_search", "jira_get_issue"]
+    )
+
+    # 過濾器配置
+    jira_projects_filter: Optional[str] = Field(default=None)
+    confluence_spaces_filter: Optional[str] = Field(default=None)
+
+    @property
+    def is_configured(self) -> bool:
+        """檢查是否已配置 Atlassian 服務"""
+        return bool(
+            (
+                self.confluence_url
+                and self.confluence_username
+                and self.confluence_api_token
+            )
+            or (self.jira_url and self.jira_username and self.jira_api_token)
+        )
+
+
 class Settings(BaseSettings):
     """主配置類"""
 
@@ -120,6 +162,7 @@ class Settings(BaseSettings):
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     features: FeatureSettings = Field(default_factory=FeatureSettings)
+    mcp_atlassian: MCPAtlassianSettings = Field(default_factory=MCPAtlassianSettings)
 
     model_config = SettingsConfigDict(
         env_file=".env",
