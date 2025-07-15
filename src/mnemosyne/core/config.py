@@ -51,7 +51,7 @@ class APISettings(BaseSettings):
 
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
-    grpc_port: int = Field(default=50051, alias="GRPC_PORT")
+    grpc_port: int = Field(default=50051)
 
     # CORS 配置
     cors_origins: List[str] = Field(default_factory=lambda: ["*"])
