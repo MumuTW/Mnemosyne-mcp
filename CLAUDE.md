@@ -10,14 +10,14 @@ Mnemosyne MCP 是一個主動的、有狀態的軟體知識圖譜引擎，採用
 
 ### gRPC-First 架構模式
 - **gRPC 伺服器**: 核心業務邏輯入口 (port: 50051)
-- **REST Gateway**: 外部 HTTP/JSON 兼容層 (port: 8000)  
+- **REST Gateway**: 外部 HTTP/JSON 兼容層 (port: 8000)
 - **抽象層**: `GraphStoreClient` 介面統一圖資料庫操作
 - **驅動層**: FalkorDB 驅動實作具體資料庫操作
 
 ### 程式碼架構 (`src/mnemosyne/`)
 ```
 ├── api/           # FastAPI REST Gateway
-├── core/          # 配置管理、日誌等核心功能  
+├── core/          # 配置管理、日誌等核心功能
 ├── interfaces/    # 抽象介面定義 (GraphStoreClient)
 ├── drivers/       # 資料庫驅動實作 (FalkorDB)
 ├── schemas/       # Pydantic 數據模型
@@ -90,17 +90,17 @@ make sprint0-verify # Sprint 0 完成狀態驗證
 ## 重要文件參考
 
 - **產品需求**: `docs/DEVELOPEMENT/PRD.md`
-- **技術架構**: `docs/DEVELOPEMENT/TAB.md` 
+- **技術架構**: `docs/DEVELOPEMENT/TAB.md`
 - **API 規格**: `docs/DEVELOPEMENT/API.md`
 - **Sprint 計劃**: `docs/DEVELOPEMENT/mvp_sprint.md`
 
 ## 當前狀態 (Sprint 0 完成)
 
-✅ 基礎設施與抽象層完成  
-✅ Docker Compose 環境  
-✅ GraphStoreClient 抽象介面  
-✅ FalkorDB 驅動整合  
-✅ 完整 API 骨架 & 健康檢查  
-✅ CLI 工具與開發工具鏈  
+✅ 基礎設施與抽象層完成
+✅ Docker Compose 環境
+✅ GraphStoreClient 抽象介面
+✅ FalkorDB 驅動整合
+✅ 完整 API 骨架 & 健康檢查
+✅ CLI 工具與開發工具鏈
 
 下階段：實現第一個 ECL (Extract→Cognify→Load) 閉環

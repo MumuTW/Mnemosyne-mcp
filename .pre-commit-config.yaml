@@ -1,0 +1,69 @@
+repos:
+  # 1. Import 排序 (先執行)
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=88]
+
+  # 2. Python 程式碼格式化 (可能影響 import 格式)
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=88]
+
+  # 3. Python Linting (在格式化後檢查)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # 4. 型別檢查 (暫時跳過，等待 Pydantic PR 修復)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.7.1
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [
+  #         pydantic>=2.5.0,
+  #         fastapi>=0.110.0,
+  #         types-PyYAML
+  #       ]
+  #       args: [--ignore-missing-imports]
+
+  # 一般檔案檢查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-docstring-first
+      - id: debug-statements
+
+  # 測試 (只在 pre-push 執行，避免 commit 太慢)
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: uv run pytest tests/unit/ --maxfail=1 -q
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+# CI 配置
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, computed_field, validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class EntityType(str, Enum):
@@ -59,7 +59,7 @@ class BaseEntity(BaseModel):
         """支持哈希，用於集合操作"""
         return hash(self.unique_key)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """支持相等比較"""
         if not isinstance(other, BaseEntity):
             return False
@@ -89,15 +89,17 @@ class File(BaseEntity):
     # 語言相關屬性
     language: Optional[str] = Field(default=None, description="程式語言")
 
-    @validator("extension", pre=True)
-    def normalize_extension(cls, v):
+    @field_validator("extension", mode="before")
+    @classmethod
+    def normalize_extension(cls, v: str) -> str:
         """標準化文件擴展名"""
         if v and not v.startswith("."):
             return f".{v}"
         return v
 
-    @validator("path")
-    def validate_path(cls, v):
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, v: str) -> str:
         """驗證文件路徑"""
         if not v or not v.strip():
             raise ValueError("File path cannot be empty")
@@ -140,17 +142,19 @@ class Function(BaseEntity):
     cyclomatic_complexity: Optional[int] = Field(default=None, description="循環複雜度")
     lines_of_code: Optional[int] = Field(default=None, description="代碼行數")
 
-    @validator("line_start", "line_end")
-    def validate_line_numbers(cls, v):
+    @field_validator("line_start", "line_end")
+    @classmethod
+    def validate_line_numbers(cls, v: int) -> int:
         """驗證行號"""
         if v < 1:
             raise ValueError("Line numbers must be positive")
         return v
 
-    @validator("line_end")
-    def validate_line_end(cls, v, values):
+    @field_validator("line_end")
+    @classmethod
+    def validate_line_end(cls, v: int, info) -> int:
         """驗證結束行號大於起始行號"""
-        if "line_start" in values and v < values["line_start"]:
+        if info.data.get("line_start") and v < info.data["line_start"]:
             raise ValueError("End line must be greater than or equal to start line")
         return v
 

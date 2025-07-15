@@ -23,7 +23,7 @@ CREATE (:Function {
 });
 
 CREATE (:Function {
-    id: "func_002", 
+    id: "func_002",
     name: "helper_function",
     file_path: "/app/main.py",
     line_start: 12,

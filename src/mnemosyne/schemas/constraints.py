@@ -5,11 +5,11 @@
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ConstraintType(str, Enum):
@@ -49,9 +49,7 @@ class Constraint(BaseModel):
     定義了對程式碼實體的約束規則。
     """
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="約束唯一標識符"
-    )
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="約束唯一標識符")
     name: str = Field(description="約束名稱")
     constraint_type: ConstraintType = Field(description="約束類型")
     description: str = Field(description="約束描述")
@@ -79,22 +77,15 @@ class Constraint(BaseModel):
     last_violation: Optional[datetime] = Field(default=None, description="最後違規時間")
 
     # 通知配置
-    notification_channels: List[str] = Field(
-        default_factory=list, description="通知渠道"
-    )
+    notification_channels: List[str] = Field(default_factory=list, description="通知渠道")
 
-    class Config:
-        """Pydantic 配置"""
+    model_config = ConfigDict(use_enum_values=True)
 
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
-
-    @validator("expires_at")
-    def validate_expiry(cls, v, values):
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expiry(cls, v: Optional[datetime], info) -> Optional[datetime]:
         """驗證過期時間"""
-        if v and "created_at" in values and v <= values["created_at"]:
+        if v and info.data.get("created_at") and v <= info.data["created_at"]:
             raise ValueError("Expiry time must be after creation time")
         return v
 
@@ -124,16 +115,12 @@ class Lock(BaseModel):
     用於協調多代理的並行操作，防止衝突。
     """
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="鎖定唯一標識符"
-    )
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="鎖定唯一標識符")
     target_entity_id: str = Field(description="被鎖定的實體ID")
     target_entity_type: str = Field(description="被鎖定的實體類型")
 
     # 鎖定信息
-    lock_type: str = Field(
-        default="exclusive", description="鎖定類型：shared, exclusive"
-    )
+    lock_type: str = Field(default="exclusive", description="鎖定類型：shared, exclusive")
     status: LockStatus = Field(default=LockStatus.ACTIVE, description="鎖定狀態")
 
     # 持有者信息
@@ -152,29 +139,23 @@ class Lock(BaseModel):
 
     # 續期配置
     auto_extend: bool = Field(default=False, description="是否自動續期")
-    max_duration_minutes: Optional[int] = Field(
-        default=None, description="最大持續時間（分鐘）"
-    )
+    max_duration_minutes: Optional[int] = Field(default=None, description="最大持續時間（分鐘）")
 
-    class Config:
-        """Pydantic 配置"""
+    model_config = ConfigDict(use_enum_values=True)
 
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
-
-    @validator("expires_at")
-    def validate_expiry(cls, v, values):
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expiry(cls, v: Optional[datetime], info) -> Optional[datetime]:
         """驗證過期時間"""
-        if v and "acquired_at" in values and v <= values["acquired_at"]:
+        if v and info.data.get("acquired_at") and v <= info.data["acquired_at"]:
             raise ValueError("Expiry time must be after acquisition time")
         return v
 
-    @validator("released_at")
-    def validate_release_time(cls, v, values):
+    @field_validator("released_at")
+    @classmethod
+    def validate_release_time(cls, v: Optional[datetime], info) -> Optional[datetime]:
         """驗證釋放時間"""
-        if v and "acquired_at" in values and v < values["acquired_at"]:
+        if v and info.data.get("acquired_at") and v < info.data["acquired_at"]:
             raise ValueError("Release time must be after acquisition time")
         return v
 
@@ -212,9 +193,9 @@ class Lock(BaseModel):
             raise ValueError("Cannot extend inactive lock")
 
         if self.expires_at:
-            self.expires_at = self.expires_at + datetime.timedelta(minutes=minutes)
+            self.expires_at = self.expires_at + timedelta(minutes=minutes)
         else:
-            self.expires_at = datetime.now() + datetime.timedelta(minutes=minutes)
+            self.expires_at = datetime.now() + timedelta(minutes=minutes)
 
 
 class ConstraintViolation(BaseModel):
@@ -224,9 +205,7 @@ class ConstraintViolation(BaseModel):
     記錄約束違規的詳細信息。
     """
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="違規唯一標識符"
-    )
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="違規唯一標識符")
     constraint_id: str = Field(description="違反的約束ID")
     entity_id: str = Field(description="違規實體ID")
     entity_type: str = Field(description="違規實體類型")
@@ -238,9 +217,7 @@ class ConstraintViolation(BaseModel):
 
     # 上下文信息
     context: Dict[str, Any] = Field(default_factory=dict, description="違規上下文")
-    change_details: Optional[Dict[str, Any]] = Field(
-        default=None, description="變更詳情"
-    )
+    change_details: Optional[Dict[str, Any]] = Field(default=None, description="變更詳情")
 
     # 時間屬性
     detected_at: datetime = Field(default_factory=datetime.now, description="檢測時間")
@@ -253,9 +230,7 @@ class ConstraintViolation(BaseModel):
     assignee: Optional[str] = Field(default=None, description="處理人")
 
     # 修復建議
-    remediation_suggestions: List[str] = Field(
-        default_factory=list, description="修復建議"
-    )
+    remediation_suggestions: List[str] = Field(default_factory=list, description="修復建議")
 
     class Config:
         """Pydantic 配置"""

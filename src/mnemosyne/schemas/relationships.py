@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class RelationshipType(str, Enum):
@@ -33,9 +33,7 @@ class BaseRelationship(BaseModel):
     所有圖譜邊的基礎類，提供通用的屬性和方法。
     """
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="關係唯一標識符"
-    )
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="關係唯一標識符")
     relationship_type: RelationshipType = Field(description="關係類型")
     source_id: str = Field(description="源節點ID")
     target_id: str = Field(description="目標節點ID")
@@ -59,11 +57,12 @@ class BaseRelationship(BaseModel):
             datetime: lambda v: v.isoformat(),
         }
 
-    @validator("valid_to")
-    def validate_valid_period(cls, v, values):
+    @field_validator("valid_to")
+    @classmethod
+    def validate_valid_period(cls, v: Optional[datetime], info) -> Optional[datetime]:
         """驗證有效期"""
-        if v and "valid_from" in values and values["valid_from"]:
-            if v <= values["valid_from"]:
+        if v and info.data.get("valid_from"):
+            if v <= info.data["valid_from"]:
                 raise ValueError("valid_to must be after valid_from")
         return v
 
@@ -143,18 +142,14 @@ class DependsOnRelationship(BaseRelationship):
     )
 
     # 依賴特性
-    dependency_type: str = Field(
-        description="依賴類型：import, inheritance, composition"
-    )
+    dependency_type: str = Field(description="依賴類型：import, inheritance, composition")
     is_optional: bool = Field(default=False, description="是否為可選依賴")
 
     # 版本約束
     version_constraint: Optional[str] = Field(default=None, description="版本約束")
 
     # 依賴強度
-    strength: str = Field(
-        default="strong", description="依賴強度：weak, strong, critical"
-    )
+    strength: str = Field(default="strong", description="依賴強度：weak, strong, critical")
 
 
 class InheritsFromRelationship(BaseRelationship):
@@ -169,9 +164,7 @@ class InheritsFromRelationship(BaseRelationship):
     )
 
     # 繼承特性
-    inheritance_type: str = Field(
-        default="single", description="繼承類型：single, multiple"
-    )
+    inheritance_type: str = Field(default="single", description="繼承類型：single, multiple")
     is_abstract: bool = Field(default=False, description="是否為抽象繼承")
 
     # 繼承順序（用於多重繼承）
@@ -193,9 +186,7 @@ class ImplementsRelationship(BaseRelationship):
     is_complete: bool = Field(default=True, description="是否完全實現")
 
     # 實現的方法列表
-    implemented_methods: list[str] = Field(
-        default_factory=list, description="已實現的方法"
-    )
+    implemented_methods: list[str] = Field(default_factory=list, description="已實現的方法")
     missing_methods: list[str] = Field(default_factory=list, description="未實現的方法")
 
 
@@ -215,9 +206,7 @@ class ImportsRelationship(BaseRelationship):
     alias: Optional[str] = Field(default=None, description="導入別名")
 
     # 導入的具體項目
-    imported_items: list[str] = Field(
-        default_factory=list, description="導入的具體項目"
-    )
+    imported_items: list[str] = Field(default_factory=list, description="導入的具體項目")
 
     # 導入位置
     import_line: Optional[int] = Field(default=None, description="導入語句所在行號")
@@ -260,7 +249,7 @@ class AppliesToRelationship(BaseRelationship):
     )
 
     # 約束狀態
-    is_active: bool = Field(default=True, description="約束是否激活")
+    constraint_active: bool = Field(default=True, description="約束是否激活")
     last_checked: Optional[datetime] = Field(default=None, description="最後檢查時間")
 
     # 違規信息

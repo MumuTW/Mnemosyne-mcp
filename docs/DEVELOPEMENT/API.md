@@ -30,12 +30,12 @@ service MnemosyneMCP {
   // --- 查詢與分析 (Query & Analysis) ---
   rpc Search(SearchRequest) returns (SearchResponse);
   rpc RunImpactAnalysis(ImpactAnalysisRequest) returns (ImpactAnalysisResponse);
-  
+
   // --- 約束與鎖定 (Constraints & Locking) ---
   rpc ApplyConstraint(ApplyConstraintRequest) returns (ApplyConstraintResponse);
   rpc AcquireLock(AcquireLockRequest) returns (AcquireLockResponse);
   rpc ReleaseLock(ReleaseLockRequest) returns (ReleaseLockResponse);
-  
+
   // --- 可視化 (Visualization) ---
   rpc GetGraphVisualization(GetGraphVisualizationRequest) returns (GraphVisualization);
 }

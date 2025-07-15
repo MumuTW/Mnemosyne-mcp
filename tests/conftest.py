@@ -6,7 +6,6 @@ Pytest 配置和共享 fixtures
 
 import asyncio
 from typing import AsyncGenerator, Generator
-# Unused imports removed by linter
 
 import pytest
 import pytest_asyncio
@@ -19,6 +18,8 @@ from mnemosyne.interfaces.graph_store import (
     GraphStoreClient,
     QueryResult,
 )
+
+# Unused imports removed by linter
 
 
 class MockGraphStoreClient(GraphStoreClient):
@@ -98,12 +99,13 @@ async def mock_graph_client(
 def test_client(test_settings, mock_graph_client) -> TestClient:
     """測試客戶端 fixture"""
     from fastapi import FastAPI
+
     from mnemosyne.api.main import (
         get_current_settings,
         get_graph_client,
-        root,
-        health_check,
         get_version,
+        health_check,
+        root,
     )
 
     # 創建測試專用的 FastAPI 應用，避免 lifespan 問題

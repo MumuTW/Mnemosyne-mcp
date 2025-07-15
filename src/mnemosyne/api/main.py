@@ -9,11 +9,10 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..core.config import Settings, get_settings, validate_config
-from ..core.logging import LoggingMiddleware, get_logger, setup_logging
+from ..core.logging import get_logger, setup_logging
 from ..drivers.falkordb_driver import FalkorDBDriver
 from ..interfaces.graph_store import ConnectionError, GraphStoreClient
 from ..schemas.api import ErrorResponse, HealthResponse, HealthStatus
@@ -121,25 +120,6 @@ def get_current_settings() -> Settings:
         Settings: 配置實例
     """
     return get_settings()
-
-
-# 添加 CORS 中間件
-@app.on_event("startup")
-async def setup_middleware():
-    """設置中間件"""
-    settings = get_settings()
-
-    # CORS 中間件
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.api.cors_origins,
-        allow_credentials=settings.api.cors_allow_credentials,
-        allow_methods=settings.api.cors_allow_methods,
-        allow_headers=settings.api.cors_allow_headers,
-    )
-
-    # 日誌中間件
-    app.add_middleware(LoggingMiddleware)
 
 
 # 全局異常處理器

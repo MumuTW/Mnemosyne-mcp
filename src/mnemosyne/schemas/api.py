@@ -79,12 +79,8 @@ class IngestRequest(BaseModel):
 
     # 可選配置
     branch: Optional[str] = Field(default=None, description="Git 分支")
-    include_patterns: List[str] = Field(
-        default_factory=list, description="包含文件模式"
-    )
-    exclude_patterns: List[str] = Field(
-        default_factory=list, description="排除文件模式"
-    )
+    include_patterns: List[str] = Field(default_factory=list, description="包含文件模式")
+    exclude_patterns: List[str] = Field(default_factory=list, description="排除文件模式")
 
     # 處理選項
     force_refresh: bool = Field(default=False, description="是否強制刷新")
@@ -104,9 +100,7 @@ class IngestResponse(BaseModel):
     message: str = Field(description="響應消息")
 
     # 任務信息
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="任務創建時間"
-    )
+    created_at: datetime = Field(default_factory=datetime.now, description="任務創建時間")
     estimated_duration_minutes: Optional[int] = Field(
         default=None, description="預估耗時（分鐘）"
     )
@@ -219,9 +213,7 @@ class ImpactAnalysisRequest(BaseModel):
     include_indirect: bool = Field(default=True, description="是否包含間接影響")
 
     # 過濾選項
-    exclude_entity_types: List[str] = Field(
-        default_factory=list, description="排除的實體類型"
-    )
+    exclude_entity_types: List[str] = Field(default_factory=list, description="排除的實體類型")
 
 
 class ImpactAnalysisResponse(BaseModel):

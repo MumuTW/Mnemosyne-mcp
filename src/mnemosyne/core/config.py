@@ -19,11 +19,13 @@ from ..interfaces.graph_store import ConnectionConfig
 class DatabaseSettings(BaseSettings):
     """資料庫配置"""
 
-    host: str = Field(default="localhost", env="FALKORDB_HOST")
-    port: int = Field(default=6379, env="FALKORDB_PORT")
-    database: str = Field(default="mnemosyne", env="FALKORDB_DATABASE")
-    username: Optional[str] = Field(default=None, env="FALKORDB_USERNAME")
-    password: Optional[str] = Field(default=None, env="FALKORDB_PASSWORD")
+    model_config = SettingsConfigDict(env_prefix="FALKORDB_", case_sensitive=False)
+
+    host: str = Field(default="localhost")
+    port: int = Field(default=6379)
+    database: str = Field(default="mnemosyne")
+    username: Optional[str] = Field(default=None)
+    password: Optional[str] = Field(default=None)
     connection_pool_size: int = Field(default=10)
     connection_timeout: int = Field(default=30)
     query_timeout: int = Field(default=60)
@@ -45,9 +47,11 @@ class DatabaseSettings(BaseSettings):
 class APISettings(BaseSettings):
     """API 配置"""
 
-    host: str = Field(default="0.0.0.0", env="API_HOST")
-    port: int = Field(default=8000, env="API_PORT")
-    grpc_port: int = Field(default=50051, env="GRPC_PORT")
+    model_config = SettingsConfigDict(env_prefix="API_", case_sensitive=False)
+
+    host: str = Field(default="0.0.0.0")
+    port: int = Field(default=8000)
+    grpc_port: int = Field(default=50051, alias="GRPC_PORT")
 
     # CORS 配置
     cors_origins: List[str] = Field(default_factory=lambda: ["*"])
@@ -56,15 +60,17 @@ class APISettings(BaseSettings):
     cors_allow_headers: List[str] = Field(default_factory=lambda: ["*"])
 
     # 安全配置
-    secret_key: str = Field(default="dev-secret-key", env="SECRET_KEY")
-    api_key_header: str = Field(default="X-API-Key", env="API_KEY_HEADER")
+    secret_key: str = Field(default="dev-secret-key", alias="SECRET_KEY")
+    api_key_header: str = Field(default="X-API-Key", alias="API_KEY_HEADER")
 
 
 class LoggingSettings(BaseSettings):
     """日誌配置"""
 
-    level: str = Field(default="INFO", env="LOG_LEVEL")
-    format: str = Field(default="json", env="LOG_FORMAT")
+    model_config = SettingsConfigDict(env_prefix="LOG_", case_sensitive=False)
+
+    level: str = Field(default="INFO")
+    format: str = Field(default="json")
 
     # 處理器配置
     handlers: List[Dict[str, Any]] = Field(
@@ -78,10 +84,12 @@ class LoggingSettings(BaseSettings):
 class SecuritySettings(BaseSettings):
     """安全配置"""
 
+    model_config = SettingsConfigDict(case_sensitive=False)
+
     secret_key: str = Field(
-        default="dev-secret-key-change-in-production", env="SECRET_KEY"
+        default="dev-secret-key-change-in-production", alias="SECRET_KEY"
     )
-    api_key_header: str = Field(default="X-API-Key", env="API_KEY_HEADER")
+    api_key_header: str = Field(default="X-API-Key", alias="API_KEY_HEADER")
 
     # JWT 配置（為未來功能預留）
     jwt_algorithm: str = Field(default="HS256")
@@ -91,8 +99,10 @@ class SecuritySettings(BaseSettings):
 class FeatureSettings(BaseSettings):
     """功能開關配置"""
 
-    enable_metrics: bool = Field(default=False, env="ENABLE_METRICS")
-    metrics_port: int = Field(default=9090, env="METRICS_PORT")
+    model_config = SettingsConfigDict(case_sensitive=False)
+
+    enable_metrics: bool = Field(default=False, alias="ENABLE_METRICS")
+    metrics_port: int = Field(default=9090, alias="METRICS_PORT")
     enable_tracing: bool = Field(default=False)
     enable_debug_queries: bool = Field(default=True)
 
