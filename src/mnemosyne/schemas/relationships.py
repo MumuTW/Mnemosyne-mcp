@@ -30,6 +30,7 @@ class RelationshipType(str, Enum):
     AUTHORED = "AUTHORED"
     MENTIONS = "MENTIONS"
     LINKS_TO = "LINKS_TO"
+    REFERENCES = "REFERENCES"
 
 
 class BaseRelationship(BaseModel):

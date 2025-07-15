@@ -205,6 +205,210 @@ def query(query: str, output_format: str):
     asyncio.run(run_query())
 
 
+@cli.group()
+def atlassian():
+    """Atlassian 知識圖譜管理命令"""
+    pass
+
+
+@atlassian.command()
+@click.argument("jql_query")
+@click.option("--project", "-p", help="專案過濾器")
+@click.option("--max-results", "-m", default=100, help="最大結果數量")
+@click.option("--no-relationships", is_flag=True, help="不包含關聯關係")
+def extract_jira(
+    jql_query: str, project: Optional[str], max_results: int, no_relationships: bool
+):
+    """提取 Jira Issues 到知識圖譜"""
+    click.echo(f"🎯 開始提取 Jira Issues: {jql_query}")
+
+    if project:
+        click.echo(f"   - 專案過濾: {project}")
+    click.echo(f"   - 最大結果: {max_results}")
+    click.echo(f"   - 包含關係: {'否' if no_relationships else '是'}")
+
+    async def run_extraction():
+        try:
+            settings = get_settings()
+
+            from ..ecl.atlassian_pipeline import AtlassianECLPipeline
+
+            async with AtlassianECLPipeline(settings) as pipeline:
+                result = await pipeline.extract_and_load_jira_issues(
+                    jql_query=jql_query,
+                    project_filter=project,
+                    max_results=max_results,
+                    include_relationships=not no_relationships,
+                )
+
+                if result.extraction_success:
+                    click.echo("✅ 提取成功!")
+                    click.echo(f"   - 實體數量: {result.entities_extracted}")
+                    click.echo(f"   - 關係數量: {result.relationships_extracted}")
+
+                    if result.load_result:
+                        click.echo(
+                            f"   - Issues 載入: {result.load_result.jira_issues_loaded}"
+                        )
+                        click.echo(
+                            f"   - 關係載入: {result.load_result.relationships_loaded}"
+                        )
+                        click.echo(
+                            f"   - 處理時間: {result.load_result.processing_time_ms}ms"
+                        )
+
+                        if result.load_result.errors:
+                            click.echo("⚠️  載入警告:")
+                            for error in result.load_result.errors:
+                                click.echo(f"   - {error}")
+                else:
+                    click.echo("❌ 提取失敗:")
+                    for error in result.errors:
+                        click.echo(f"   - {error}")
+
+        except Exception as e:
+            click.echo(f"❌ 提取過程發生錯誤: {e}")
+
+    asyncio.run(run_extraction())
+
+
+@atlassian.command()
+@click.argument("search_query")
+@click.option("--space", "-s", help="空間過濾器")
+@click.option("--max-results", "-m", default=100, help="最大結果數量")
+@click.option("--no-relationships", is_flag=True, help="不包含關聯關係")
+def extract_confluence(
+    search_query: str, space: Optional[str], max_results: int, no_relationships: bool
+):
+    """提取 Confluence Pages 到知識圖譜"""
+    click.echo(f"📄 開始提取 Confluence Pages: {search_query}")
+
+    if space:
+        click.echo(f"   - 空間過濾: {space}")
+    click.echo(f"   - 最大結果: {max_results}")
+    click.echo(f"   - 包含關係: {'否' if no_relationships else '是'}")
+
+    async def run_extraction():
+        try:
+            settings = get_settings()
+
+            from ..ecl.atlassian_pipeline import AtlassianECLPipeline
+
+            async with AtlassianECLPipeline(settings) as pipeline:
+                result = await pipeline.extract_and_load_confluence_pages(
+                    query=search_query,
+                    space_filter=space,
+                    max_results=max_results,
+                    include_relationships=not no_relationships,
+                )
+
+                if result.extraction_success:
+                    click.echo("✅ 提取成功!")
+                    click.echo(f"   - 實體數量: {result.entities_extracted}")
+                    click.echo(f"   - 關係數量: {result.relationships_extracted}")
+
+                    if result.load_result:
+                        click.echo(
+                            f"   - Pages 載入: {result.load_result.confluence_pages_loaded}"
+                        )
+                        click.echo(
+                            f"   - 關係載入: {result.load_result.relationships_loaded}"
+                        )
+                        click.echo(
+                            f"   - 處理時間: {result.load_result.processing_time_ms}ms"
+                        )
+
+                        if result.load_result.errors:
+                            click.echo("⚠️  載入警告:")
+                            for error in result.load_result.errors:
+                                click.echo(f"   - {error}")
+                else:
+                    click.echo("❌ 提取失敗:")
+                    for error in result.errors:
+                        click.echo(f"   - {error}")
+
+        except Exception as e:
+            click.echo(f"❌ 提取過程發生錯誤: {e}")
+
+    asyncio.run(run_extraction())
+
+
+@atlassian.command()
+def status():
+    """檢查 Atlassian 管線狀態"""
+    click.echo("📊 檢查 Atlassian 管線狀態")
+
+    async def check_status():
+        try:
+            settings = get_settings()
+
+            from ..ecl.atlassian_pipeline import AtlassianECLPipeline
+
+            async with AtlassianECLPipeline(settings) as pipeline:
+                status = await pipeline.get_pipeline_status()
+
+                click.echo(
+                    f"   - 資料庫連接: {'✅ 正常' if status.get('database_connected') else '❌ 異常'}"
+                )
+
+                if "statistics" in status:
+                    stats = status["statistics"]
+                    click.echo(f"   - Jira Issues: {stats.get('jira_issues', 0)}")
+                    click.echo(
+                        f"   - Confluence Pages: {stats.get('confluence_pages', 0)}"
+                    )
+                    click.echo(f"   - Projects: {stats.get('jira_projects', 0)}")
+                    click.echo(f"   - Spaces: {stats.get('confluence_spaces', 0)}")
+                    click.echo(f"   - 關係: {stats.get('relationships', 0)}")
+
+                if "components" in status:
+                    components = status["components"]
+                    click.echo("   - 組件狀態:")
+                    for comp, state in components.items():
+                        status_icon = "✅" if state == "ready" else "❌"
+                        click.echo(f"     • {comp}: {status_icon} {state}")
+
+                if "error" in status:
+                    click.echo(f"❌ 錯誤: {status['error']}")
+
+        except Exception as e:
+            click.echo(f"❌ 狀態檢查失敗: {e}")
+
+    asyncio.run(check_status())
+
+
+@atlassian.command()
+@click.option("--source", "-s", help="指定要清除的資料源")
+@click.option("--confirm", is_flag=True, help="確認清除操作")
+def clear(source: Optional[str], confirm: bool):
+    """清除 Atlassian 知識圖譜資料"""
+    if not confirm:
+        click.echo("⚠️  此操作將清除 Atlassian 知識圖譜資料")
+        click.echo("請使用 --confirm 參數確認操作")
+        return
+
+    click.echo("🗑️  開始清除 Atlassian 資料")
+    if source:
+        click.echo(f"   - 資料源: {source}")
+    else:
+        click.echo("   - 範圍: 全部")
+
+    async def run_clear():
+        try:
+            settings = get_settings()
+
+            from ..ecl.atlassian_pipeline import AtlassianECLPipeline
+
+            async with AtlassianECLPipeline(settings) as pipeline:
+                await pipeline.clear_data(source)
+                click.echo("✅ 清除完成!")
+
+        except Exception as e:
+            click.echo(f"❌ 清除失敗: {e}")
+
+    asyncio.run(run_clear())
+
+
 def main():
     """CLI 主入口點"""
     cli()
