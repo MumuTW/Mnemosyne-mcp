@@ -5,7 +5,7 @@ ECL Extractor 測試
 import tempfile
 from pathlib import Path
 
-from mnemosyne.ecl.extractor import FileSystemExtractor
+from mnemosyne.ecl.extract import FileSystemExtractor
 
 
 class TestFileSystemExtractor:
