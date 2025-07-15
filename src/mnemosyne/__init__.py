@@ -8,12 +8,12 @@ __version__ = "0.1.0"
 __author__ = "Mnemosyne Team"
 __description__ = "主動的、有狀態的軟體知識圖譜引擎"
 
-from .core.config import get_settings
 from .api.main import app
+from .core.config import get_settings
 
 __all__ = [
     "__version__",
-    "__author__", 
+    "__author__",
     "__description__",
     "get_settings",
     "app",
