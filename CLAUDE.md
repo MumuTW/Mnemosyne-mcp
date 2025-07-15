@@ -28,9 +28,11 @@ Mnemosyne MCP 是一個主動的、有狀態的軟體知識圖譜引擎，採用
 
 ### 環境設置
 ```bash
-make dev-setup      # 快速設置開發環境
-make install        # 安裝依賴套件
+make dev-setup      # 快速設置開發環境 (包含 uv venv 創建)
+make install        # 安裝依賴套件 (使用 uv)
 make docker-up      # 啟動 FalkorDB 服務
+uv venv             # 創建虛擬環境
+uv pip install -e ".[dev]"  # 直接使用 uv 安裝
 ```
 
 ### 開發流程
@@ -72,6 +74,8 @@ make sprint0-verify # Sprint 0 完成狀態驗證
 - Python 3.10+，使用 black (line-length=88) 格式化
 - 型別註解強制要求 (mypy 嚴格模式)
 - Pydantic v2 用於數據模型驗證
+- 使用 `uv` 進行快速依賴管理，不再使用 Poetry
+- 標準 PEP 621 配置格式 (pyproject.toml)
 
 ### 測試策略
 - 測試分類：`unit`, `integration`, `e2e` markers
