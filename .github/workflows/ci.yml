@@ -44,6 +44,7 @@ jobs:
         python -m isort --check-only src tests || true
         python -m flake8 src tests --max-line-length=88 --extend-ignore=E203,W503 || true
 
+
     - name: Run tests
       env:
         FALKORDB_HOST: localhost
