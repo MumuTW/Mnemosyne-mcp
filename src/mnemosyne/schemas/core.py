@@ -76,6 +76,7 @@ class File(BaseEntity):
     entity_type: EntityType = Field(default=EntityType.FILE, frozen=True)
     path: str = Field(description="文件路徑")
     extension: str = Field(description="文件擴展名")
+    content: Optional[str] = Field(default=None, description="文件內容")
     size_bytes: Optional[int] = Field(default=None, description="文件大小（字節）")
     hash: Optional[str] = Field(default=None, description="文件內容哈希")
     encoding: str = Field(default="utf-8", description="文件編碼")

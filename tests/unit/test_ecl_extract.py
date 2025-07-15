@@ -128,4 +128,4 @@ class TestFileSystemExtractor:
             assert file_entity.content == test_content
             assert file_entity.language == "python"
             assert file_entity.encoding == "utf-8"
-            assert file_entity.size > 0
+            assert file_entity.size_bytes > 0

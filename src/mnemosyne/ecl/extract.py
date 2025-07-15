@@ -162,8 +162,8 @@ class FileSystemExtractor:
             name=file_path.name,
             path=str(relative_path),
             extension=file_path.suffix,
-            size=stat.st_size,
+            content=content,  # 傳遞文件內容
+            size_bytes=stat.st_size,
             encoding="utf-8",  # 預設編碼
             language="python",  # 目前只支援 Python
-            content=content,
         )

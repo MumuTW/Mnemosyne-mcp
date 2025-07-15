@@ -21,17 +21,18 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
 
-  # 4. 型別檢查 (暫時跳過，等待 Pydantic PR 修復)
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.7.1
-  #   hooks:
-  #     - id: mypy
-  #       additional_dependencies: [
-  #         pydantic>=2.5.0,
-  #         fastapi>=0.110.0,
-  #         types-PyYAML
-  #       ]
-  #       args: [--ignore-missing-imports]
+  # 4. 型別檢查 (Pydantic V2 遷移完成，但暫時設為手動執行以解決型別問題)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [
+          pydantic>=2.5.0,
+          fastapi>=0.110.0,
+          types-PyYAML
+        ]
+        args: [--ignore-missing-imports]
+        stages: [manual]  # 設為手動執行，避免阻止開發流程
 
   # 一般檔案檢查
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -48,11 +49,16 @@ repos:
   # 測試 (只在 pre-push 執行，避免 commit 太慢)
   - repo: local
     hooks:
-      - id: pytest-check
-        name: pytest-check
-        entry: uv run pytest tests/unit/ --maxfail=1 -q
+      - id: pytest-unit
+        name: Run unit tests before push
+        entry: uv run pytest tests/unit/ -v --maxfail=1 --tb=short
         language: system
-        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+      - id: pytest-integration
+        name: Run integration tests (if available)
+        entry: bash -c "if [ -d tests/integration ] && [ -n \"$(ls -A tests/integration)\" ]; then uv run pytest tests/integration/ -v --maxfail=1; else echo 'No integration tests found, skipping'; fi"
+        language: system
         pass_filenames: false
         stages: [pre-push]
 
