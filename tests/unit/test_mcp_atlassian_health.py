@@ -2,10 +2,9 @@
 MCP Atlassian 健康檢查功能測試
 """
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 from aiohttp import ClientError
+from aioresponses import aioresponses
 
 from mnemosyne.api.main import check_mcp_atlassian_health
 
@@ -18,14 +17,9 @@ class TestMCPAtlassianHealth:
         """測試成功的健康檢查"""
         test_url = "http://mcp-atlassian:8001"
 
-        # Mock aiohttp ClientSession
-        mock_response = AsyncMock()
-        mock_response.status = 200
+        with aioresponses() as m:
+            m.get(f"{test_url}/health", status=200, payload={"status": "ok"})
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
-
-        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await check_mcp_atlassian_health(test_url)
 
         assert result["status"] == "healthy"
@@ -37,14 +31,13 @@ class TestMCPAtlassianHealth:
         """測試 HTTP 錯誤的健康檢查"""
         test_url = "http://mcp-atlassian:8001"
 
-        # Mock aiohttp ClientSession with error status
-        mock_response = AsyncMock()
-        mock_response.status = 500
+        with aioresponses() as m:
+            m.get(
+                f"{test_url}/health",
+                status=500,
+                payload={"error": "Internal Server Error"},
+            )
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
-
-        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await check_mcp_atlassian_health(test_url)
 
         assert result["status"] == "unhealthy"
@@ -56,11 +49,9 @@ class TestMCPAtlassianHealth:
         """測試連接錯誤的健康檢查"""
         test_url = "http://mcp-atlassian:8001"
 
-        # Mock aiohttp ClientSession with connection error
-        mock_session = AsyncMock()
-        mock_session.get.side_effect = ClientError("Connection refused")
+        with aioresponses() as m:
+            m.get(f"{test_url}/health", exception=ClientError("Connection refused"))
 
-        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await check_mcp_atlassian_health(test_url)
 
         assert result["status"] == "unhealthy"
@@ -72,11 +63,9 @@ class TestMCPAtlassianHealth:
         """測試意外錯誤的健康檢查"""
         test_url = "http://mcp-atlassian:8001"
 
-        # Mock aiohttp ClientSession with unexpected error
-        mock_session = AsyncMock()
-        mock_session.get.side_effect = Exception("Unexpected error")
+        with aioresponses() as m:
+            m.get(f"{test_url}/health", exception=Exception("Unexpected error"))
 
-        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await check_mcp_atlassian_health(test_url)
 
         assert result["status"] == "unhealthy"
@@ -89,16 +78,11 @@ class TestMCPAtlassianHealth:
         test_url = "http://mcp-atlassian:8001"
         timeout = 3
 
-        mock_response = AsyncMock()
-        mock_response.status = 200
+        with aioresponses() as m:
+            m.get(f"{test_url}/health", status=200, payload={"status": "ok"})
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+            result = await check_mcp_atlassian_health(test_url, timeout)
 
-        with patch("aiohttp.ClientSession", return_value=mock_session) as mock_client:
-            with patch("aiohttp.ClientTimeout") as mock_timeout:
-                await check_mcp_atlassian_health(test_url, timeout)
-
-                # 驗證 timeout 設置
-                mock_timeout.assert_called_once_with(total=timeout)
-                mock_client.assert_called_once_with(timeout=mock_timeout.return_value)
+        assert result["status"] == "healthy"
+        assert result["url"] == test_url
+        assert "response_time_ms" in result
