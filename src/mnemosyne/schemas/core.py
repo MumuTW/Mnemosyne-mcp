@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 class EntityType(str, Enum):
@@ -41,13 +41,7 @@ class BaseEntity(BaseModel):
     # 擴展屬性，用於存儲額外的元數據
     extra: Dict[str, Any] = Field(default_factory=dict, description="擴展屬性")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
     @computed_field
     @property

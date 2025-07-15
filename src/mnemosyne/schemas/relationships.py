@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RelationshipType(str, Enum):
@@ -49,13 +49,7 @@ class BaseRelationship(BaseModel):
     # 擴展屬性
     extra: Dict[str, Any] = Field(default_factory=dict, description="擴展屬性")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
     @field_validator("valid_to")
     @classmethod
