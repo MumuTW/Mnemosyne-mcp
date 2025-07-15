@@ -139,9 +139,7 @@ class FunctionVisitor(ast.NodeVisitor):
     def _process_function(self, node):
         """處理函數節點"""
         # 計算函數簽名
-        args = []
-        for arg in node.args.args:
-            args.append(arg.arg)
+        args = [arg.arg for arg in node.args.args]
 
         # 處理預設參數
         defaults = [ast.unparse(default) for default in node.args.defaults]
@@ -185,20 +183,28 @@ class CallVisitor(ast.NodeVisitor):
         self.calls: List[CallsRelationship] = []
         self.current_function: Optional[Function] = None
 
-        # 建立函數名稱到函數的映射
-        self.function_map = {func.name: func for func in functions}
+        # 建立函數映射，使用 (name, line_start) 作為唯一鍵避免命名衝突
+        self.function_map = {(func.name, func.line_start): func for func in functions}
+        # 同時保留名稱映射用於簡單查找（處理潛在的多個同名函數）
+        self.function_name_map = {}
+        for func in functions:
+            if func.name not in self.function_name_map:
+                self.function_name_map[func.name] = []
+            self.function_name_map[func.name].append(func)
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """進入函數定義"""
         old_function = self.current_function
-        self.current_function = self.function_map.get(node.name)
+        # 使用 (name, line_start) 精確匹配函數
+        self.current_function = self.function_map.get((node.name, node.lineno))
         self.generic_visit(node)
         self.current_function = old_function
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         """進入異步函數定義"""
         old_function = self.current_function
-        self.current_function = self.function_map.get(node.name)
+        # 使用 (name, line_start) 精確匹配函數
+        self.current_function = self.function_map.get((node.name, node.lineno))
         self.generic_visit(node)
         self.current_function = old_function
 
@@ -206,15 +212,18 @@ class CallVisitor(ast.NodeVisitor):
         """訪問函數呼叫"""
         if self.current_function:
             called_name = self._extract_call_name(node)
-            if called_name and called_name in self.function_map:
-                called_function = self.function_map[called_name]
+            if called_name and called_name in self.function_name_map:
+                # 處理同名函數的情況，選擇第一個匹配的函數
+                # TODO: 未來可以改進為基於作用域的精確匹配
+                potential_functions = self.function_name_map[called_name]
+                called_function = potential_functions[0]  # 暫時選擇第一個
 
                 # 創建呼叫關係
                 call_relationship = CallsRelationship(
-                    caller_id=self.current_function.unique_key,
-                    callee_id=called_function.unique_key,
+                    source_id=self.current_function.id,
+                    target_id=called_function.id,
                     call_line=node.lineno,
-                    call_context=(
+                    context=(
                         ast.unparse(node) if hasattr(ast, "unparse") else str(node)
                     ),
                     is_conditional=self._is_conditional_call(node),
