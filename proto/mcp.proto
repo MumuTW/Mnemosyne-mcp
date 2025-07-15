@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package mnemosyne.mcp.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// ===================================================================
+// 核心服務定義 (Core Service Definition)
+// ===================================================================
+service MnemosyneMCP {
+  // --- 數據導入與管理 (Ingestion & Management) ---
+  rpc IngestProject(IngestProjectRequest) returns (IngestProjectResponse);
+  rpc GetIngestStatus(GetIngestStatusRequest) returns (IngestStatus);
+
+  // --- 查詢與分析 (Query & Analysis) ---
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc RunImpactAnalysis(ImpactAnalysisRequest) returns (ImpactAnalysisResponse);
+
+  // --- 約束與鎖定 (Constraints & Locking) ---
+  rpc ApplyConstraint(ApplyConstraintRequest) returns (ApplyConstraintResponse);
+  rpc AcquireLock(AcquireLockRequest) returns (AcquireLockResponse);
+  rpc ReleaseLock(ReleaseLockRequest) returns (ReleaseLockResponse);
+
+  // --- 可視化 (Visualization) ---
+  rpc GetGraphVisualization(GetGraphVisualizationRequest) returns (GraphVisualization);
+}
+
+// ===================================================================
+// 數據結構定義 (Message Definitions)
+// ===================================================================
+
+// --- 數據導入 ---
+message IngestProjectRequest {
+  string project_id = 1; // 專案的唯一標識符
+  string git_url = 2; // 要導入的 Git 倉儲 URL
+  // 可選：指定要分析的分支
+  optional string branch = 3;
+}
+
+message IngestProjectResponse {
+  string task_id = 1; // 用於查詢狀態的異步任務 ID
+}
+
+message IngestStatus {
+  string task_id = 1;
+  enum Status {
+    PENDING = 0;
+    RUNNING = 1;
+    COMPLETED = 2;
+    FAILED = 3;
+  }
+  Status status = 2;
+  string message = 3; // 例如 "Parsing file 50/100..."
+  google.protobuf.Timestamp completion_time = 4;
+}
+
+message GetIngestStatusRequest {
+  string task_id = 1;
+}
+
+// --- 查詢與分析 ---
+message SearchRequest {
+  string query_text = 1; // 自然語言查詢
+  int32 top_k = 2; // 返回最相關的結果數量
+  // 可選：指定時間點進行歷史查詢
+  optional google.protobuf.Timestamp as_of_time = 3;
+}
+
+message SearchResponse {
+  string summary = 1; // MCP 生成的情報摘要
+  repeated SearchResult relevant_nodes = 2; // 檢索到的相關節點
+  Graph subgraph = 3; // 圍繞相關節點擴展的子圖
+  string suggested_next_step = 4;
+}
+
+message SearchResult {
+  string node_id = 1; // 節點唯一標識符
+  string node_type = 2; // 節點類型 (Function, File, Class, etc.)
+  string content = 3; // 節點內容或描述
+  float similarity_score = 4; // 語義相似度分數 (0.0-1.0)
+  map<string, string> properties = 5; // 節點屬性
+  repeated string labels = 6; // 節點標籤
+}
+
+message ImpactAnalysisRequest {
+  string project_id = 1;
+  string pr_number = 2; // 或 commit_hash
+}
+
+message ImpactAnalysisResponse {
+  string summary = 1;
+  enum RiskLevel {
+    LOW = 0;
+    MEDIUM = 1;
+    HIGH = 2;
+  }
+  RiskLevel risk_level = 2;
+  Graph impact_subgraph = 3;
+}
+
+// --- 約束與鎖定 ---
+message AcquireLockRequest {
+  string target_node_query = 1; // 例如 "File{path:'/app/main.py'}"
+  string agent_id = 2;
+  string task_id = 3;
+}
+
+message AcquireLockResponse {
+  bool locked = 1;
+  optional LockConflict conflict_details = 2;
+}
+
+message ReleaseLockRequest {
+  string task_id = 1;
+}
+
+message ReleaseLockResponse {
+  bool released = 1;
+}
+
+message ApplyConstraintRequest {
+  string constraint_definition = 1;
+  string target_query = 2;
+}
+
+message ApplyConstraintResponse {
+  string constraint_id = 1;
+  bool applied = 2;
+}
+
+message LockConflict {
+  string conflicting_agent_id = 1;
+  string conflicting_task_id = 2;
+  google.protobuf.Timestamp locked_since = 3;
+}
+
+// --- 可視化 ---
+message GetGraphVisualizationRequest {
+  string project_id = 1;
+  optional string focus_node_id = 2;
+  optional int32 max_depth = 3;
+}
+
+message GraphVisualization {
+  Graph graph = 1;
+  string layout_data = 2; // JSON 格式的佈局信息
+}
+
+// --- 通用數據結構 ---
+message Node {
+  string id = 1; // 內部唯一 UUID
+  string type = 2; // 如 'Function', 'File'
+  google.protobuf.Struct properties = 3; // 存儲所有屬性 (如 name, path, hash)
+  repeated string labels = 4; // 節點標籤
+}
+
+message Edge {
+  string id = 1;
+  string source_node_id = 2;
+  string target_node_id = 3;
+  string relationship_type = 4; // 如 'CALLS', 'CONTAINS'
+  google.protobuf.Struct properties = 5;
+}
+
+message Graph {
+  repeated Node nodes = 1;
+  repeated Edge edges = 2;
+  map<string, string> metadata = 3;
+}

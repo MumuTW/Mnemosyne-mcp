@@ -249,3 +249,188 @@ class FalkorDBDriver(GraphStoreClient):
 
         # 基本類型直接返回
         return value
+
+    async def create_vector_index(
+        self,
+        node_label: str,
+        property_name: str,
+        dimension: int = 1536,
+        similarity_function: str = "cosine",
+    ) -> bool:
+        """
+        創建向量索引
+
+        Args:
+            node_label: 節點標籤
+            property_name: 屬性名稱
+            dimension: 向量維度，默認 1536 (text-embedding-3-small)
+            similarity_function: 相似度函數，默認 cosine
+
+        Returns:
+            bool: 是否成功創建索引
+        """
+        try:
+            # 構建創建向量索引的 Cypher 查詢
+            query = f"""
+            CALL db.idx.vector.createNodeIndex(
+                '{node_label}',
+                '{property_name}',
+                {dimension},
+                '{similarity_function}'
+            )
+            """
+
+            self.logger.info(
+                "Creating vector index",
+                node_label=node_label,
+                property_name=property_name,
+                dimension=dimension,
+                similarity_function=similarity_function,
+            )
+
+            await self.execute_query(query)
+
+            self.logger.info(
+                "Vector index created successfully",
+                node_label=node_label,
+                property_name=property_name,
+            )
+
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to create vector index",
+                node_label=node_label,
+                property_name=property_name,
+                error=str(e),
+            )
+            return False
+
+    async def vector_search(
+        self,
+        node_label: str,
+        property_name: str,
+        query_vector: List[float],
+        top_k: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        執行向量搜索
+
+        Args:
+            node_label: 節點標籤
+            property_name: 向量屬性名稱
+            query_vector: 查詢向量
+            top_k: 返回最相似的 k 個結果
+
+        Returns:
+            List[Dict[str, Any]]: 搜索結果列表
+        """
+        try:
+            # 構建向量搜索的 Cypher 查詢
+            query = f"""
+            CALL db.idx.vector.queryNodes(
+                '{node_label}',
+                '{property_name}',
+                {top_k},
+                $vector
+            ) YIELD node, score
+            RETURN node, score
+            ORDER BY score DESC
+            """
+
+            self.logger.info(
+                "Executing vector search",
+                node_label=node_label,
+                property_name=property_name,
+                top_k=top_k,
+                vector_dimension=len(query_vector),
+            )
+
+            result = await self.execute_query(query, {"vector": query_vector})
+
+            # 處理搜索結果
+            search_results = []
+            for row in result.data:
+                if "node" in row and "score" in row:
+                    search_results.append(
+                        {
+                            "node": row["node"],
+                            "similarity_score": float(row["score"]),
+                            "node_id": (
+                                row["node"].get("id")
+                                if isinstance(row["node"], dict)
+                                else None
+                            ),
+                            "properties": (
+                                row["node"].get("properties", {})
+                                if isinstance(row["node"], dict)
+                                else {}
+                            ),
+                        }
+                    )
+
+            self.logger.info(
+                "Vector search completed", results_count=len(search_results)
+            )
+
+            return search_results
+
+        except Exception as e:
+            self.logger.error(
+                "Vector search failed",
+                node_label=node_label,
+                property_name=property_name,
+                error=str(e),
+            )
+            return []
+
+    async def add_node_with_vector(
+        self,
+        node_label: str,
+        properties: Dict[str, Any],
+        vector_property: str,
+        vector: List[float],
+    ) -> Optional[str]:
+        """
+        添加帶有向量的節點
+
+        Args:
+            node_label: 節點標籤
+            properties: 節點屬性
+            vector_property: 向量屬性名稱
+            vector: 向量值
+
+        Returns:
+            Optional[str]: 節點 ID，如果失敗則返回 None
+        """
+        try:
+            # 生成唯一 ID
+            node_id = str(uuid.uuid4())
+
+            # 合併屬性和向量
+            all_properties = {**properties, vector_property: vector, "id": node_id}
+
+            # 構建屬性字符串
+            props_str = ", ".join([f"{k}: ${k}" for k in all_properties.keys()])
+
+            query = f"CREATE (n:{node_label} {{{props_str}}}) RETURN n.id as id"
+
+            result = await self.execute_query(query, all_properties)
+
+            if result.data and len(result.data) > 0:
+                created_id = result.data[0].get("id", node_id)
+                self.logger.info(
+                    "Node with vector created",
+                    node_id=created_id,
+                    node_label=node_label,
+                )
+                return created_id
+
+            return node_id
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to create node with vector", node_label=node_label, error=str(e)
+            )
+            return None
