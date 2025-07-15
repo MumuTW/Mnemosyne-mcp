@@ -82,10 +82,15 @@ make sprint0-verify # Sprint 0 完成狀態驗證
 - 27+ 單元測試已全部通過
 - 使用 pytest 框架，支援異步測試
 
-### 分支管理
-- 主分支：`main`
-- 功能分支：`feature/*`
-- 使用 Squash & Merge 策略
+### 分支管理 (GitHub Flow)
+- **主分支**: `main` - 永遠保持可部署狀態
+- **功能分支**: `feature/*` - 短生命週期，從 main 切出，完成後立即合併
+- **工作流程**:
+  1. 從 main 切出 feature 分支: `git checkout -b feature/feature-name`
+  2. 完成開發後推送並開 Pull Request
+  3. CI/CD 檢查通過後使用 Squash & Merge 合併回 main
+  4. main 分支自動觸發部署流程
+- **優勢**: 極簡管理、快速迭代、適合 MVP 開發
 
 ## 重要文件參考
 
