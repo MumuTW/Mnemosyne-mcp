@@ -106,57 +106,6 @@ class AtlassianRelationship(BaseModel):
         return {k: v for k, v in props.items() if v is not None}
 
 
-class JiraIssueData(BaseModel):
-    """
-    Jira Issue 原始數據模型
-
-    用於接收來自 Jira API 的原始數據
-    """
-
-    id: str = Field(description="Jira 內部 ID")
-    key: str = Field(description="Issue 鍵值 (如 DEMO-123)")
-    summary: str = Field(description="Issue 摘要")
-    description: Optional[str] = Field(default=None, description="Issue 描述")
-    status: str = Field(description="狀態")
-    priority: Optional[str] = Field(default=None, description="優先級")
-    issue_type: str = Field(description="Issue 類型")
-    project_key: str = Field(description="所屬專案鍵值")
-    assignee: Optional[str] = Field(default=None, description="指派者")
-    reporter: Optional[str] = Field(default=None, description="報告者")
-    created: datetime = Field(description="創建時間")
-    updated: datetime = Field(description="更新時間")
-    labels: List[str] = Field(default_factory=list, description="標籤列表")
-    components: List[str] = Field(default_factory=list, description="組件列表")
-    custom_fields: Dict[str, str] = Field(default_factory=dict, description="自定義欄位")
-    url: Optional[str] = Field(default=None, description="Issue URL")
-
-    model_config = ConfigDict(use_enum_values=True)
-
-
-class ConfluencePageData(BaseModel):
-    """
-    Confluence Page 原始數據模型
-
-    用於接收來自 Confluence API 的原始數據
-    """
-
-    id: str = Field(description="Confluence 內部 ID")
-    title: str = Field(description="頁面標題")
-    content: Optional[str] = Field(default=None, description="頁面內容")
-    space_key: str = Field(description="空間鍵值")
-    space_name: str = Field(description="空間名稱")
-    author: Optional[str] = Field(default=None, description="作者")
-    created: datetime = Field(description="創建時間")
-    updated: datetime = Field(description="更新時間")
-    version: int = Field(description="版本號")
-    status: str = Field(description="狀態")
-    labels: List[str] = Field(default_factory=list, description="標籤列表")
-    ancestors: List[str] = Field(default_factory=list, description="父頁面列表")
-    url: Optional[str] = Field(default=None, description="頁面 URL")
-
-    model_config = ConfigDict(use_enum_values=True)
-
-
 class AtlassianExtractionMetadata(BaseModel):
     """
     Atlassian 資料提取元數據

@@ -196,21 +196,28 @@ async def check_mcp_atlassian_health(url: str, timeout: int = 5) -> Dict[str, An
         Dict[str, Any]: 健康狀態資訊
     """
     try:
+        import time
+
+        start_time = time.monotonic()
+
         async with aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=timeout)
         ) as session:
             async with session.get(f"{url}/health") as response:
+                response_time_ms = (time.monotonic() - start_time) * 1000
+
                 if response.status == 200:
                     return {
                         "status": "healthy",
                         "url": url,
-                        "response_time_ms": None,  # 可以在這裡測量響應時間
+                        "response_time_ms": response_time_ms,
                     }
                 else:
                     return {
                         "status": "unhealthy",
                         "url": url,
                         "error": f"HTTP {response.status}",
+                        "response_time_ms": response_time_ms,
                     }
     except aiohttp.ClientError as e:
         return {

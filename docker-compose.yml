@@ -82,6 +82,8 @@ services:
     depends_on:
       falkordb:
         condition: service_healthy
+      mcp-atlassian:
+        condition: service_healthy
     volumes:
       - ./configs:/app/configs:ro
       - ./logs:/app/logs

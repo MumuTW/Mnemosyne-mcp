@@ -233,12 +233,41 @@ class AtlassianECLPipeline:
     ) -> Dict[str, Any]:
         """提取 Jira Issues 資料"""
         try:
-            # 這裡應該調用實際的 Atlassian API 或 gRPC 服務
-            # 暫時使用模擬資料
+            # 使用 AtlassianClient 調用真實的 MCP Atlassian 服務
+            if not self.extractor_service:
+                return {
+                    "success": False,
+                    "issues": [],
+                    "relationships": [],
+                    "errors": ["Atlassian 提取服務未配置"],
+                }
+
+            # 調用 AtlassianClient 搜索 Jira Issues
+            search_result = await self.extractor_service.search_jira_issues(
+                query=jql_query, project_filter=project_filter, max_results=max_results
+            )
+
+            issues = search_result.get("issues", [])
+            relationships = []
+
+            # 如果需要包含關係，為每個 Issue 建立與 Project 的關係
+            if include_relationships:
+                for issue in issues:
+                    project_key = issue.get("project", "")
+                    if project_key:
+                        relationships.append(
+                            {
+                                "source_id": f"jira_issue_{issue['key']}",
+                                "target_id": f"jira_project_{project_key}",
+                                "relationship_type": "BELONGS_TO",
+                                "properties": {"project_key": project_key},
+                            }
+                        )
+
             return {
                 "success": True,
-                "issues": [],  # 實際實作時會包含 JiraIssueEntity 列表
-                "relationships": [],  # 實際實作時會包含 KnowledgeRelationship 列表
+                "issues": issues,
+                "relationships": relationships,
                 "errors": [],
             }
         except Exception as e:
@@ -246,7 +275,7 @@ class AtlassianECLPipeline:
                 "success": False,
                 "issues": [],
                 "relationships": [],
-                "errors": [str(e)],
+                "errors": [f"提取 Jira Issues 失敗: {str(e)}"],
             }
 
     async def _extract_confluence_pages(
@@ -258,12 +287,41 @@ class AtlassianECLPipeline:
     ) -> Dict[str, Any]:
         """提取 Confluence Pages 資料"""
         try:
-            # 這裡應該調用實際的 Atlassian API 或 gRPC 服務
-            # 暫時使用模擬資料
+            # 使用 AtlassianClient 調用真實的 MCP Atlassian 服務
+            if not self.extractor_service:
+                return {
+                    "success": False,
+                    "pages": [],
+                    "relationships": [],
+                    "errors": ["Atlassian 提取服務未配置"],
+                }
+
+            # 調用 AtlassianClient 搜索 Confluence Pages
+            search_result = await self.extractor_service.search_confluence_pages(
+                query=query, space_filter=space_filter, max_results=max_results
+            )
+
+            pages = search_result.get("pages", [])
+            relationships = []
+
+            # 如果需要包含關係，為每個 Page 建立與 Space 的關係
+            if include_relationships:
+                for page in pages:
+                    space_key = page.get("space", "")
+                    if space_key:
+                        relationships.append(
+                            {
+                                "source_id": f"confluence_page_{page['id']}",
+                                "target_id": f"confluence_space_{space_key}",
+                                "relationship_type": "BELONGS_TO",
+                                "properties": {"space_key": space_key},
+                            }
+                        )
+
             return {
                 "success": True,
-                "pages": [],  # 實際實作時會包含 ConfluencePageEntity 列表
-                "relationships": [],  # 實際實作時會包含 KnowledgeRelationship 列表
+                "pages": pages,
+                "relationships": relationships,
                 "errors": [],
             }
         except Exception as e:
@@ -271,7 +329,7 @@ class AtlassianECLPipeline:
                 "success": False,
                 "pages": [],
                 "relationships": [],
-                "errors": [str(e)],
+                "errors": [f"提取 Confluence Pages 失敗: {str(e)}"],
             }
 
     async def _cognify_jira_data(

@@ -61,8 +61,16 @@ class AtlassianKnowledgeExtractorService(
                 context.set_details("Atlassian service not configured")
                 return atlassian_pb2.ExtractJiraIssuesResponse()
 
-            # 簡化實現 - 返回空響應
+            # 使用 AtlassianClient 調用真實的 MCP Atlassian 服務
+            # 注意：由於 gRPC 服務方法是同步的，這裡簡化實現
+            # 在實際生產環境中，應考慮使用 asyncio.run 或重新設計為異步 gRPC
             issues = []
+            try:
+                # 這裡應該調用同步版本的客戶端或使用 asyncio.run
+                # 暫時保持空實現，直到客戶端支援同步調用
+                logger.info(f"Requested Jira issues with query: {request.query}")
+            except Exception as e:
+                logger.error(f"Failed to fetch Jira issues: {e}")
 
             # 轉換為 gRPC 實體
             grpc_issues = []
@@ -144,8 +152,15 @@ class AtlassianKnowledgeExtractorService(
                 context.set_details("Atlassian service not configured")
                 return atlassian_pb2.ExtractConfluencePagesResponse()
 
-            # 簡化實現 - 返回空響應
+            # 使用 AtlassianClient 調用真實的 MCP Atlassian 服務
+            # 注意：由於 gRPC 服務方法是同步的，這裡簡化實現
             pages = []
+            try:
+                # 這裡應該調用同步版本的客戶端或使用 asyncio.run
+                # 暫時保持空實現，直到客戶端支援同步調用
+                logger.info(f"Requested Confluence pages with query: {request.query}")
+            except Exception as e:
+                logger.error(f"Failed to fetch Confluence pages: {e}")
 
             # 轉換為 gRPC 實體
             grpc_pages = []

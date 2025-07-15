@@ -137,7 +137,7 @@ class AtlassianClient:
             )
 
         url = f"{self._base_url}/{endpoint.lstrip('/')}"
-        start_time = time.time()
+        start_time = time.monotonic()
 
         try:
             self.request_count += 1
@@ -151,7 +151,7 @@ class AtlassianClient:
             )
 
             async with self.session.request(method, url, json=data) as response:
-                response_time_ms = (time.time() - start_time) * 1000
+                response_time_ms = (time.monotonic() - start_time) * 1000
                 self.total_response_time += response_time_ms
 
                 if response.status == 200:
@@ -191,7 +191,7 @@ class AtlassianClient:
 
         except aiohttp.ClientError as e:
             self.error_count += 1
-            response_time_ms = (time.time() - start_time) * 1000
+            response_time_ms = (time.monotonic() - start_time) * 1000
 
             logger.error(
                 "Request failed with client error",
@@ -208,7 +208,7 @@ class AtlassianClient:
             )
         except Exception as e:
             self.error_count += 1
-            response_time_ms = (time.time() - start_time) * 1000
+            response_time_ms = (time.monotonic() - start_time) * 1000
 
             logger.error(
                 "Request failed with unexpected error",
