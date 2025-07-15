@@ -97,7 +97,10 @@ class AtlassianGraphLoader:
                         f"載入關係: {relationship.source_id} -> {relationship.target_id}"
                     )
                 except Exception as e:
-                    error_msg = f"載入關係失敗 {relationship.source_id} -> {relationship.target_id}: {str(e)}"
+                    error_msg = (
+                        f"載入關係失敗 {relationship.source_id} -> "
+                        f"{relationship.target_id}: {str(e)}"
+                    )
                     errors.append(error_msg)
                     self.logger.error(error_msg)
 
@@ -250,7 +253,9 @@ class AtlassianGraphLoader:
             # 清除特定來源的資料
             query = """
             MATCH (n)
-            WHERE n.entity_type IN ['jira_issue', 'confluence_page', 'jira_project', 'confluence_space']
+            WHERE n.entity_type IN [
+                'jira_issue', 'confluence_page', 'jira_project', 'confluence_space'
+            ]
             AND (n.source_info IS NULL OR n.source_info CONTAINS $source_filter)
             OPTIONAL MATCH (n)-[r]-()
             DELETE r, n
@@ -262,7 +267,9 @@ class AtlassianGraphLoader:
             # 清除所有 Atlassian 資料
             query = """
             MATCH (n)
-            WHERE n.entity_type IN ['jira_issue', 'confluence_page', 'jira_project', 'confluence_space']
+            WHERE n.entity_type IN [
+                'jira_issue', 'confluence_page', 'jira_project', 'confluence_space'
+            ]
             OPTIONAL MATCH (n)-[r]-()
             DELETE r, n
             """
@@ -285,7 +292,9 @@ class AtlassianGraphLoader:
             "confluence_pages": "MATCH (n:ConfluencePage) RETURN count(n) as count",
             "jira_projects": "MATCH (n:JiraProject) RETURN count(n) as count",
             "confluence_spaces": "MATCH (n:ConfluenceSpace) RETURN count(n) as count",
-            "relationships": "MATCH ()-[r:ATLASSIAN_RELATION]-() RETURN count(r) as count",
+            "relationships": (
+                "MATCH ()-[r:ATLASSIAN_RELATION]-() RETURN count(r) as count"
+            ),
         }
 
         for stat_name, query in count_queries.items():

@@ -309,7 +309,8 @@ def extract_confluence(
 
                     if result.load_result:
                         click.echo(
-                            f"   - Pages 載入: {result.load_result.confluence_pages_loaded}"
+                            f"   - Pages 載入: "
+                            f"{result.load_result.confluence_pages_loaded}"
                         )
                         click.echo(
                             f"   - 關係載入: {result.load_result.relationships_loaded}"
@@ -348,7 +349,8 @@ def status():
                 status = await pipeline.get_pipeline_status()
 
                 click.echo(
-                    f"   - 資料庫連接: {'✅ 正常' if status.get('database_connected') else '❌ 異常'}"
+                    f"   - 資料庫連接: "
+                    f"{'✅ 正常' if status.get('database_connected') else '❌ 異常'}"
                 )
 
                 if "statistics" in status:
