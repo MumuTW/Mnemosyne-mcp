@@ -5,25 +5,25 @@ ECL 管線整合器
 """
 
 from dataclasses import dataclass
-from typing import List
 
+from ..core.logging import get_logger
 from ..drivers.falkordb_driver import FalkorDBDriver
-from .cognify import ASTCognifier
-from .extractor import FileSystemExtractor
-from .loader import GraphLoader
+from .cognify import ASTCognifier, CognifyResult
+from .extract import ExtractionResult, FileSystemExtractor
+from .load import GraphLoader, LoadResult
+
+logger = get_logger(__name__)
 
 
 @dataclass
 class PipelineResult:
     """管線執行結果"""
 
-    files_extracted: int
-    functions_found: int
-    calls_found: int
-    functions_loaded: int
-    calls_loaded: int
-    errors: List[str]
+    extraction_result: ExtractionResult
+    cognify_result: CognifyResult
+    load_result: LoadResult
     success: bool
+    total_errors: int
 
 
 class ECLPipeline:
@@ -41,9 +41,10 @@ class ECLPipeline:
             driver: FalkorDB 驅動器
         """
         self.driver = driver
-        self.extractor = None
+        self.extractor = FileSystemExtractor()
         self.cognifier = ASTCognifier()
         self.loader = GraphLoader(driver)
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
 
     async def process_project(
         self, project_path: str, clear_existing: bool = False
@@ -58,65 +59,62 @@ class ECLPipeline:
         Returns:
             PipelineResult: 管線執行結果
         """
-        all_errors = []
+        self.logger.info(f"開始處理專案: {project_path}")
 
-        try:
-            # 清除現有資料（如果需要）
-            if clear_existing:
-                await self.loader.clear_data()
+        # 清除現有資料（如果需要）
+        if clear_existing:
+            await self.loader.clear_project_data(project_path)
 
-            # Extract 階段
-            self.extractor = FileSystemExtractor(project_path)
-            python_files = self.extractor.extract_files()
+        # Extract 階段
+        self.logger.info("執行 Extract 階段")
+        extraction_result = self.extractor.extract_project(project_path)
 
-            if not python_files:
-                return PipelineResult(
-                    files_extracted=0,
-                    functions_found=0,
-                    calls_found=0,
-                    functions_loaded=0,
-                    calls_loaded=0,
-                    errors=["沒有找到任何 Python 檔案"],
-                    success=False,
-                )
-
-            # Cognify 階段
-            cognify_result = self.cognifier.cognify_files(python_files)
-            all_errors.extend(cognify_result.errors)
-
-            # Load 階段
-            load_result = await self.loader.load_data(
-                cognify_result.functions, cognify_result.calls
-            )
-            all_errors.extend(load_result.errors)
-
-            # 計算成功狀態
-            success = (
-                len(python_files) > 0
-                and len(cognify_result.functions) > 0
-                and len(all_errors) == 0
-            )
-
+        if not extraction_result.files:
+            self.logger.warning("沒有找到任何檔案")
             return PipelineResult(
-                files_extracted=len(python_files),
-                functions_found=len(cognify_result.functions),
-                calls_found=len(cognify_result.calls),
-                functions_loaded=load_result.functions_loaded,
-                calls_loaded=load_result.calls_loaded,
-                errors=all_errors,
-                success=success,
-            )
-
-        except Exception as e:
-            error_msg = f"管線執行失敗: {str(e)}"
-            all_errors.append(error_msg)
-
-            return PipelineResult(
-                files_extracted=0,
-                functions_found=0,
-                calls_found=0,
-                functions_loaded=0,
-                calls_loaded=0,
-                errors=all_errors,
+                extraction_result=extraction_result,
+                cognify_result=CognifyResult(functions=[], calls=[], errors=[]),
+                load_result=LoadResult(
+                    files_loaded=0, functions_loaded=0, calls_loaded=0, errors=[]
+                ),
                 success=False,
+                total_errors=len(extraction_result.errors),
             )
+
+        # Cognify 階段
+        self.logger.info("執行 Cognify 階段")
+        cognify_result = self.cognifier.cognify_files(extraction_result.files)
+
+        # Load 階段
+        self.logger.info("執行 Load 階段")
+        load_result = await self.loader.load_project_data(
+            files=extraction_result.files,
+            functions=cognify_result.functions,
+            calls=cognify_result.calls,
+        )
+
+        # 計算總錯誤數
+        total_errors = (
+            len(extraction_result.errors)
+            + len(cognify_result.errors)
+            + len(load_result.errors)
+        )
+
+        success = extraction_result.files and total_errors == 0
+
+        self.logger.info(
+            "管線執行完成",
+            success=success,
+            files=len(extraction_result.files),
+            functions=len(cognify_result.functions),
+            calls=len(cognify_result.calls),
+            errors=total_errors,
+        )
+
+        return PipelineResult(
+            extraction_result=extraction_result,
+            cognify_result=cognify_result,
+            load_result=load_result,
+            success=success,
+            total_errors=total_errors,
+        )

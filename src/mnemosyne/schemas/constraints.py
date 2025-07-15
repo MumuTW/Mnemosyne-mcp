@@ -232,13 +232,7 @@ class ConstraintViolation(BaseModel):
     # 修復建議
     remediation_suggestions: List[str] = Field(default_factory=list, description="修復建議")
 
-    class Config:
-        """Pydantic 配置"""
-
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(use_enum_values=True)
 
     @property
     def is_resolved(self) -> bool:

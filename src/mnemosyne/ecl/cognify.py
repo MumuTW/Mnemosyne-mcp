@@ -6,38 +6,21 @@ Cognify 階段：AST 解析器
 
 import ast
 from dataclasses import dataclass
-from typing import List, Optional, Set
+from typing import List, Optional
 
+from ..core.logging import get_logger
+from ..schemas.core import File, Function
+from ..schemas.relationships import CallsRelationship
 
-@dataclass
-class FunctionInfo:
-    """函數資訊"""
-
-    name: str
-    file_path: str
-    line_start: int
-    line_end: int
-    signature: str
-    is_method: bool = False
-    class_name: Optional[str] = None
-
-
-@dataclass
-class CallInfo:
-    """呼叫關係資訊"""
-
-    caller_function: str
-    callee_function: str
-    call_line: int
-    file_path: str
+logger = get_logger(__name__)
 
 
 @dataclass
 class CognifyResult:
     """認知化結果"""
 
-    functions: List[FunctionInfo]
-    calls: List[CallInfo]
+    functions: List[Function]
+    calls: List[CallsRelationship]
     errors: List[str]
 
 
@@ -49,81 +32,91 @@ class ASTCognifier:
     """
 
     def __init__(self):
-        self.functions: List[FunctionInfo] = []
-        self.calls: List[CallInfo] = []
-        self.errors: List[str] = []
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
 
-    def cognify_files(self, file_paths: List[str]) -> CognifyResult:
+    def cognify_files(self, files: List[File]) -> CognifyResult:
         """
         認知化多個檔案
 
         Args:
-            file_paths: 檔案路徑列表
+            files: 檔案列表
 
         Returns:
             CognifyResult: 認知化結果
         """
-        self.functions = []
-        self.calls = []
-        self.errors = []
+        all_functions = []
+        all_calls = []
+        all_errors = []
 
-        for file_path in file_paths:
+        for file in files:
             try:
-                self._cognify_file(file_path)
+                result = self.cognify_file(file)
+                all_functions.extend(result.functions)
+                all_calls.extend(result.calls)
+                all_errors.extend(result.errors)
             except Exception as e:
-                error_msg = f"認知化檔案失敗 {file_path}: {str(e)}"
-                self.errors.append(error_msg)
+                error_msg = f"認知化檔案失敗 {file.path}: {str(e)}"
+                all_errors.append(error_msg)
+                self.logger.error(error_msg)
+
+        self.logger.info(f"認知化完成: {len(all_functions)} 函數, {len(all_calls)} 呼叫關係")
 
         return CognifyResult(
-            functions=self.functions, calls=self.calls, errors=self.errors
+            functions=all_functions, calls=all_calls, errors=all_errors
         )
 
-    def _cognify_file(self, file_path: str) -> None:
+    def cognify_file(self, file: File) -> CognifyResult:
         """
         認知化單個檔案
 
         Args:
-            file_path: 檔案路徑
-        """
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-        except Exception as e:
-            self.errors.append(f"讀取檔案失敗 {file_path}: {str(e)}")
-            return
+            file: 檔案 Entity
 
-        if not content.strip():
-            return
+        Returns:
+            CognifyResult: 認知化結果
+        """
+        functions = []
+        calls = []
+        errors = []
+
+        if not file.content:
+            self.logger.warning(f"檔案內容為空: {file.path}")
+            return CognifyResult(functions=[], calls=[], errors=[])
 
         try:
             # 解析 AST
-            tree = ast.parse(content, filename=file_path)
+            tree = ast.parse(file.content, filename=file.path)
 
             # 提取函數定義
-            function_visitor = FunctionVisitor(file_path)
+            function_visitor = FunctionVisitor(file)
             function_visitor.visit(tree)
-            self.functions.extend(function_visitor.functions)
+            functions = function_visitor.functions
 
             # 提取呼叫關係
-            call_visitor = CallVisitor(file_path, function_visitor.function_names)
+            call_visitor = CallVisitor(file, functions)
             call_visitor.visit(tree)
-            self.calls.extend(call_visitor.calls)
+            calls = call_visitor.calls
+
+            self.logger.debug(f"檔案 {file.path}: {len(functions)} 函數, {len(calls)} 呼叫")
 
         except SyntaxError as e:
-            error_msg = f"語法錯誤 {file_path}:{e.lineno}: {e.msg}"
-            self.errors.append(error_msg)
+            error_msg = f"語法錯誤 {file.path}:{e.lineno}: {e.msg}"
+            errors.append(error_msg)
+            self.logger.error(error_msg)
         except Exception as e:
-            error_msg = f"解析錯誤 {file_path}: {str(e)}"
-            self.errors.append(error_msg)
+            error_msg = f"解析錯誤 {file.path}: {str(e)}"
+            errors.append(error_msg)
+            self.logger.error(error_msg)
+
+        return CognifyResult(functions=functions, calls=calls, errors=errors)
 
 
 class FunctionVisitor(ast.NodeVisitor):
     """函數定義訪問器"""
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-        self.functions: List[FunctionInfo] = []
-        self.function_names: Set[str] = set()
+    def __init__(self, file: File):
+        self.file = file
+        self.functions: List[Function] = []
         self.current_class: Optional[str] = None
 
     def visit_ClassDef(self, node: ast.ClassDef):
@@ -146,46 +139,72 @@ class FunctionVisitor(ast.NodeVisitor):
     def _process_function(self, node):
         """處理函數節點"""
         # 計算函數簽名
-        args = []
-        for arg in node.args.args:
-            args.append(arg.arg)
+        args = [arg.arg for arg in node.args.args]
 
-        signature = f"{node.name}({', '.join(args)})"
+        # 處理預設參數
+        defaults = [ast.unparse(default) for default in node.args.defaults]
 
-        function_info = FunctionInfo(
+        # 構建完整簽名
+        signature_parts = []
+        num_defaults = len(defaults)
+        for i, arg in enumerate(args):
+            if i >= len(args) - num_defaults:
+                default_idx = i - (len(args) - num_defaults)
+                signature_parts.append(f"{arg}={defaults[default_idx]}")
+            else:
+                signature_parts.append(arg)
+
+        signature = f"{node.name}({', '.join(signature_parts)})"
+
+        # 創建函數 Entity
+        function = Function(
             name=node.name,
-            file_path=self.file_path,
+            signature=signature,
+            file_path=self.file.path,
             line_start=node.lineno,
             line_end=node.end_lineno or node.lineno,
-            signature=signature,
+            is_async=isinstance(node, ast.AsyncFunctionDef),
             is_method=self.current_class is not None,
             class_name=self.current_class,
+            docstring=ast.get_docstring(node),
+            parameters=args,
+            lines_of_code=node.end_lineno - node.lineno + 1 if node.end_lineno else 1,
         )
 
-        self.functions.append(function_info)
-        self.function_names.add(node.name)
+        self.functions.append(function)
 
 
 class CallVisitor(ast.NodeVisitor):
     """函數呼叫訪問器"""
 
-    def __init__(self, file_path: str, function_names: Set[str]):
-        self.file_path = file_path
-        self.function_names = function_names
-        self.calls: List[CallInfo] = []
-        self.current_function: Optional[str] = None
+    def __init__(self, file: File, functions: List[Function]):
+        self.file = file
+        self.functions = functions
+        self.calls: List[CallsRelationship] = []
+        self.current_function: Optional[Function] = None
+
+        # 建立函數映射，使用 (name, line_start) 作為唯一鍵避免命名衝突
+        self.function_map = {(func.name, func.line_start): func for func in functions}
+        # 同時保留名稱映射用於簡單查找（處理潛在的多個同名函數）
+        self.function_name_map = {}
+        for func in functions:
+            if func.name not in self.function_name_map:
+                self.function_name_map[func.name] = []
+            self.function_name_map[func.name].append(func)
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """進入函數定義"""
         old_function = self.current_function
-        self.current_function = node.name
+        # 使用 (name, line_start) 精確匹配函數
+        self.current_function = self.function_map.get((node.name, node.lineno))
         self.generic_visit(node)
         self.current_function = old_function
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         """進入異步函數定義"""
         old_function = self.current_function
-        self.current_function = node.name
+        # 使用 (name, line_start) 精確匹配函數
+        self.current_function = self.function_map.get((node.name, node.lineno))
         self.generic_visit(node)
         self.current_function = old_function
 
@@ -193,14 +212,24 @@ class CallVisitor(ast.NodeVisitor):
         """訪問函數呼叫"""
         if self.current_function:
             called_name = self._extract_call_name(node)
-            if called_name and called_name in self.function_names:
-                call_info = CallInfo(
-                    caller_function=self.current_function,
-                    callee_function=called_name,
+            if called_name and called_name in self.function_name_map:
+                # 處理同名函數的情況，選擇第一個匹配的函數
+                # TODO: 未來可以改進為基於作用域的精確匹配
+                potential_functions = self.function_name_map[called_name]
+                called_function = potential_functions[0]  # 暫時選擇第一個
+
+                # 創建呼叫關係
+                call_relationship = CallsRelationship(
+                    source_id=self.current_function.id,
+                    target_id=called_function.id,
                     call_line=node.lineno,
-                    file_path=self.file_path,
+                    context=(
+                        ast.unparse(node) if hasattr(ast, "unparse") else str(node)
+                    ),
+                    is_conditional=self._is_conditional_call(node),
                 )
-                self.calls.append(call_info)
+
+                self.calls.append(call_relationship)
 
         self.generic_visit(node)
 
@@ -211,3 +240,8 @@ class CallVisitor(ast.NodeVisitor):
         elif isinstance(node.func, ast.Attribute):
             return node.func.attr
         return None
+
+    def _is_conditional_call(self, node: ast.Call) -> bool:
+        """判斷是否為條件呼叫（簡化版本）"""
+        # 這裡可以實作更複雜的邏輯來判斷呼叫是否在條件語句中
+        return False

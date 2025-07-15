@@ -4,7 +4,6 @@ CLI 模組的 smoke test
 測試 CLI 模組的基本功能和導入。
 """
 
-
 import pytest
 
 
