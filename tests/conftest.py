@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 
-from mnemosyne.api.main import app, get_current_settings, get_graph_client
+# App import moved to test_client fixture to avoid lifespan issues
 from mnemosyne.core.config import Settings
 from mnemosyne.interfaces.graph_store import (
     ConnectionConfig,
@@ -97,17 +97,33 @@ async def mock_graph_client(
 @pytest.fixture
 def test_client(test_settings, mock_graph_client) -> TestClient:
     """測試客戶端 fixture"""
+    from fastapi import FastAPI
+    from mnemosyne.api.main import (
+        get_current_settings,
+        get_graph_client,
+        root,
+        health_check,
+        get_version,
+    )
+
+    # 創建測試專用的 FastAPI 應用，避免 lifespan 問題
+    test_app = FastAPI(title="Test Mnemosyne MCP API")
 
     # 覆蓋依賴
-    app.dependency_overrides[get_current_settings] = lambda: test_settings
-    app.dependency_overrides[get_graph_client] = lambda: mock_graph_client
+    test_app.dependency_overrides[get_current_settings] = lambda: test_settings
+    test_app.dependency_overrides[get_graph_client] = lambda: mock_graph_client
 
-    client = TestClient(app)
+    # 添加測試路由
+    test_app.get("/")(root)
+    test_app.get("/health")(health_check)
+    test_app.get("/version")(get_version)
+
+    client = TestClient(test_app)
 
     yield client
 
     # 清理依賴覆蓋
-    app.dependency_overrides.clear()
+    test_app.dependency_overrides.clear()
 
 
 @pytest.fixture
