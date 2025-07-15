@@ -24,6 +24,12 @@ class RelationshipType(str, Enum):
     DEFINES = "DEFINES"
     USES = "USES"
     APPLIES_TO = "APPLIES_TO"  # 用於約束關係
+    # Atlassian 相關關係類型
+    BELONGS_TO = "BELONGS_TO"
+    ASSIGNED_TO = "ASSIGNED_TO"
+    AUTHORED = "AUTHORED"
+    MENTIONS = "MENTIONS"
+    LINKS_TO = "LINKS_TO"
 
 
 class BaseRelationship(BaseModel):
