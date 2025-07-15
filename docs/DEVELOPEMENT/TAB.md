@@ -17,7 +17,7 @@ graph TD
     subgraph "Mnemosyne MCP Core Service"
         E[**gRPC Server (核心入口)**]
         F[REST Gateway (兼容層)]
-        
+
         E --> G[異步任務隊列]
         E --> H[查詢引擎]
         E --> I[ECL 管線管理器]
@@ -36,14 +36,14 @@ graph TD
 
         L[鎖定與事務管理器] --> N
     end
-    
+
     subgraph "插件生態系統 (Plugin Ecosystem)"
         direction LR
         subgraph "數據庫驅動"
             Y[FalkorDB Driver]
         end
     end
-    
+
     subgraph "核心數據存儲"
         AA[FalkorDB]
     end
@@ -93,7 +93,7 @@ graph TD
         def check_constraints_http(request_data: MyPydanticModel):
             # 1. 將 HTTP 請求轉換為 gRPC 請求
             grpc_request = mcp_pb2.CheckConstraintsRequest(target_node_id=request_data.node_id)
-            
+
             # 2. 呼叫核心的 gRPC 服務
             grpc_response = stub.CheckConstraints(grpc_request)
 
