@@ -1,6 +1,6 @@
 # Mnemosyne MCP
 
-[![CI](https://github.com/your-username/Mnemosyne-mcp/workflows/CI/badge.svg)](https://github.com/your-username/Mnemosyne-mcp/actions)
+[![CI](https://github.com/MumuTW/Mnemosyne-mcp/workflows/CI/badge.svg)](https://github.com/MumuTW/Mnemosyne-mcp/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
