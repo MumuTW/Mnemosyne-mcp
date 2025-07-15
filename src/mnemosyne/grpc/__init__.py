@@ -1,12 +1,9 @@
 """
-Mnemosyne MCP - gRPC 模組
+gRPC 服務模組
 
-提供 gRPC 服務器和客戶端實作。
+提供 Atlassian 知識提取的 gRPC 服務實現。
 """
 
-from .server import MnemosyneMCPServicer, start_grpc_server
+from .atlassian_service_simple import AtlassianKnowledgeExtractorService
 
-__all__ = [
-    "MnemosyneMCPServicer",
-    "start_grpc_server",
-]
+__all__ = ["AtlassianKnowledgeExtractorService"]

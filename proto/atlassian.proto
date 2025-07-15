@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+package mnemosyne.atlassian.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ===================================================================
+// Atlassian 知識提取服務定義 (Atlassian Knowledge Extraction Service)
+// ===================================================================
+service AtlassianKnowledgeExtractor {
+  // --- 數據提取 (Data Extraction) ---
+  rpc ExtractJiraIssues(ExtractJiraIssuesRequest) returns (ExtractJiraIssuesResponse);
+  rpc ExtractConfluencePages(ExtractConfluencePagesRequest) returns (ExtractConfluencePagesResponse);
+  rpc ExtractSingleIssue(ExtractSingleIssueRequest) returns (ExtractSingleIssueResponse);
+
+  // --- 健康檢查 (Health Check) ---
+  rpc CheckHealth(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // --- 批量處理 (Batch Processing) ---
+  rpc BatchExtractEntities(BatchExtractEntitiesRequest) returns (BatchExtractEntitiesResponse);
+
+  // --- 統計與監控 (Statistics & Monitoring) ---
+  rpc GetExtractionStats(GetExtractionStatsRequest) returns (ExtractionStatsResponse);
+}
+
+// ===================================================================
+// 請求與響應訊息 (Request & Response Messages)
+// ===================================================================
+
+// --- Jira Issues 提取 ---
+message ExtractJiraIssuesRequest {
+  string query = 1; // JQL 查詢語句或自然語言查詢
+  optional string project_filter = 2; // 專案過濾器
+  optional int32 max_results = 3; // 最大結果數量，預設 100
+  optional bool include_relationships = 4; // 是否包含關聯關係
+}
+
+message ExtractJiraIssuesResponse {
+  repeated JiraIssueEntity issues = 1;
+  repeated KnowledgeRelationship relationships = 2;
+  ExtractionMetadata metadata = 3;
+}
+
+// --- Confluence Pages 提取 ---
+message ExtractConfluencePagesRequest {
+  string query = 1; // 頁面搜尋查詢
+  optional string space_filter = 2; // 空間過濾器
+  optional int32 max_results = 3; // 最大結果數量，預設 100
+  optional bool include_relationships = 4; // 是否包含關聯關係
+}
+
+message ExtractConfluencePagesResponse {
+  repeated ConfluencePageEntity pages = 1;
+  repeated KnowledgeRelationship relationships = 2;
+  ExtractionMetadata metadata = 3;
+}
+
+// --- 單一 Issue 提取 ---
+message ExtractSingleIssueRequest {
+  string issue_key = 1; // 如 "DEMO-123"
+  bool include_comments = 2; // 是否包含評論
+  bool include_attachments = 3; // 是否包含附件
+}
+
+message ExtractSingleIssueResponse {
+  optional JiraIssueEntity issue = 1;
+  repeated KnowledgeRelationship relationships = 2;
+  ExtractionMetadata metadata = 3;
+}
+
+// --- 健康檢查 ---
+message HealthCheckRequest {
+  optional bool check_connectivity = 1; // 是否檢查連通性
+}
+
+message HealthCheckResponse {
+  enum Status {
+    HEALTHY = 0;
+    UNHEALTHY = 1;
+    DEGRADED = 2;
+  }
+  Status status = 1;
+  string message = 2;
+  map<string, string> details = 3; // 詳細健康狀態資訊
+  int64 response_time_ms = 4;
+}
+
+// --- 批量處理 ---
+message BatchExtractEntitiesRequest {
+  repeated string jira_keys = 1; // Jira Issue 鍵值列表
+  repeated string confluence_page_ids = 2; // Confluence 頁面 ID 列表
+  optional bool include_relationships = 3; // 是否包含關聯關係
+}
+
+message BatchExtractEntitiesResponse {
+  repeated JiraIssueEntity issues = 1;
+  repeated ConfluencePageEntity pages = 2;
+  repeated KnowledgeRelationship relationships = 3;
+  ExtractionMetadata metadata = 4;
+}
+
+// --- 統計與監控 ---
+message GetExtractionStatsRequest {
+  optional google.protobuf.Timestamp since = 1; // 統計起始時間
+}
+
+message ExtractionStatsResponse {
+  int64 total_requests = 1;
+  int64 successful_requests = 2;
+  int64 failed_requests = 3;
+  double success_rate = 4;
+  double average_response_time_ms = 5;
+  int64 issues_extracted = 6;
+  int64 pages_extracted = 7;
+  map<string, int64> error_counts = 8; // 錯誤類型計數
+}
+
+// ===================================================================
+// 核心實體定義 (Core Entity Definitions)
+// ===================================================================
+
+// --- Jira Issue 實體 ---
+message JiraIssueEntity {
+  string id = 1; // 內部唯一 ID (如 "jira_issue_DEMO-123")
+  string jira_id = 2; // Jira 系統內部 ID
+  string key = 3; // Issue 鍵值 (如 "DEMO-123")
+  string summary = 4; // Issue 摘要
+  string description = 5; // Issue 描述
+  string status = 6; // 狀態 (如 "Open", "In Progress", "Done")
+  string priority = 7; // 優先級 (如 "High", "Medium", "Low")
+  string issue_type = 8; // Issue 類型 (如 "Bug", "Task", "Story")
+  string project_key = 9; // 所屬專案鍵值 (如 "DEMO")
+  string assignee = 10; // 指派者
+  string reporter = 11; // 報告者
+  google.protobuf.Timestamp created_at = 12; // 創建時間
+  google.protobuf.Timestamp updated_at = 13; // 更新時間
+  repeated string labels = 14; // 標籤列表
+  repeated string components = 15; // 組件列表
+  map<string, string> custom_fields = 16; // 自定義欄位
+  string url = 17; // Issue URL
+}
+
+// --- Confluence Page 實體 ---
+message ConfluencePageEntity {
+  string id = 1; // 內部唯一 ID (如 "confluence_page_123456")
+  string confluence_id = 2; // Confluence 系統內部 ID
+  string title = 3; // 頁面標題
+  string content = 4; // 頁面內容 (可能被截斷)
+  string space_key = 5; // 空間鍵值
+  string space_name = 6; // 空間名稱
+  string author = 7; // 作者
+  google.protobuf.Timestamp created_at = 8; // 創建時間
+  google.protobuf.Timestamp updated_at = 9; // 更新時間
+  int32 version = 10; // 版本號
+  string status = 11; // 狀態 (如 "current", "historical")
+  repeated string labels = 12; // 標籤列表
+  repeated string ancestors = 13; // 父頁面列表
+  string url = 14; // 頁面 URL
+}
+
+// --- 知識關聯關係 ---
+message KnowledgeRelationship {
+  string id = 1; // 關係唯一 ID
+  string source_id = 2; // 源實體 ID
+  string target_id = 3; // 目標實體 ID
+  RelationshipType type = 4; // 關係類型
+  map<string, string> properties = 5; // 關係屬性
+  google.protobuf.Timestamp created_at = 6; // 創建時間
+  float strength = 7; // 關係強度 (0.0-1.0)
+}
+
+// --- 關係類型枚舉 ---
+enum RelationshipType {
+  UNKNOWN = 0;
+  BELONGS_TO = 1; // 屬於 (Issue → Project)
+  ASSIGNED_TO = 2; // 指派給 (Issue → Person)
+  AUTHORED_BY = 3; // 創建者 (Page → Person)
+  REFERENCES = 4; // 引用 (Page → Issue)
+  DEPENDS_ON = 5; // 依賴 (Issue → Issue)
+  BLOCKS = 6; // 阻塞 (Issue → Issue)
+  LINKED_TO = 7; // 連結到 (Issue → Page)
+  CONTAINS = 8; // 包含 (Space → Page)
+  CHILD_OF = 9; // 子頁面 (Page → Page)
+}
+
+// --- 提取元數據 ---
+message ExtractionMetadata {
+  google.protobuf.Timestamp extraction_time = 1; // 提取時間
+  string extractor_version = 2; // 提取器版本
+  int32 total_entities = 3; // 總實體數量
+  int32 total_relationships = 4; // 總關係數量
+  int64 processing_time_ms = 5; // 處理時間 (毫秒)
+  map<string, string> source_info = 6; // 數據源資訊
+  repeated string warnings = 7; // 警告訊息
+  repeated string errors = 8; // 錯誤訊息
+}
+
+// ===================================================================
+// 輔助類型定義 (Helper Type Definitions)
+// ===================================================================
+
+// --- 實體類型枚舉 ---
+enum EntityType {
+  UNKNOWN_ENTITY = 0;
+  JIRA_ISSUE = 1;
+  CONFLUENCE_PAGE = 2;
+  JIRA_PROJECT = 3;
+  CONFLUENCE_SPACE = 4;
+  PERSON = 5;
+  ATTACHMENT = 6;
+  COMMENT = 7;
+}
+
+// --- 提取配置 ---
+message ExtractionConfig {
+  int32 max_concurrent_requests = 1; // 最大並發請求數
+  int32 request_timeout_seconds = 2; // 請求超時時間
+  bool enable_caching = 3; // 是否啟用快取
+  int32 cache_ttl_seconds = 4; // 快取存活時間
+  repeated string included_fields = 5; // 包含的欄位
+  repeated string excluded_fields = 6; // 排除的欄位
+}
