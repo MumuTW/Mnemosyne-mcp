@@ -96,7 +96,7 @@ async def test_function_extraction():
     """函數提取測試"""
     print("🔍 測試函數提取...")
 
-    code = """
+    _code = """
 def connect_to_database(host, port):
     '''建立資料庫連線'''
     return Database(host, port)
@@ -171,7 +171,7 @@ async def test_import_analysis():
     """導入分析測試"""
     print("📦 測試導入分析...")
 
-    code = """
+    _code = """
 import os
 import sys
 from typing import List, Dict, Optional
@@ -231,7 +231,7 @@ async def test_constraint_pattern_matching():
     """約束模式匹配測試"""
     print("🎯 測試約束模式匹配...")
 
-    code = """
+    _code = """
 def dangerous_function():
     # 危險的 eval 調用
     result = eval("1 + 1")

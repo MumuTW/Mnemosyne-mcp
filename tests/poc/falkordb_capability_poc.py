@@ -156,7 +156,7 @@ async def test_performance_simulation():
             LIMIT 10
             """
 
-            result = await driver.execute_query(
+            _result = await driver.execute_query(
                 query, {"search_term": f"test_{query_id}"}
             )
             return time.time() - start_time
