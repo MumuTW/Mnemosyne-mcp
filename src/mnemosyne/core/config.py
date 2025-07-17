@@ -4,6 +4,7 @@
 統一管理應用程式的配置，支持環境變數和配置文件。
 """
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +15,8 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..interfaces.graph_store import ConnectionConfig
+
+logger = logging.getLogger(__name__)
 
 
 def _get_default_falkordb_host() -> str:
@@ -26,26 +29,26 @@ def _get_default_falkordb_host() -> str:
     """
     # 方法1：檢查環境變數
     if os.getenv("RUNNING_IN_DOCKER") == "1":
-        print("[INFO] FalkorDB host: falkordb (detected via RUNNING_IN_DOCKER env var)")
+        logger.info("FalkorDB host: falkordb (detected via RUNNING_IN_DOCKER env var)")
         return "falkordb"
 
     # 方法2：檢查 /.dockerenv 文件（Docker 容器內會有此文件）
     if Path("/.dockerenv").exists():
-        print("[INFO] FalkorDB host: falkordb (detected via /.dockerenv file)")
+        logger.info("FalkorDB host: falkordb (detected via /.dockerenv file)")
         return "falkordb"
 
     # 方法3：檢查 /proc/1/cgroup 內容（更可靠的檢測方式）
     try:
         with open("/proc/1/cgroup", "r") as f:
-            content = f.read()
-            if "docker" in content or "containerd" in content:
-                print("[INFO] FalkorDB host: falkordb (detected via /proc/1/cgroup)")
-                return "falkordb"
+            for line in f:
+                if "docker" in line or "containerd" in line:
+                    logger.info("FalkorDB host: falkordb (detected via /proc/1/cgroup)")
+                    return "falkordb"
     except (FileNotFoundError, PermissionError):
         pass
 
     # 本機環境預設使用 localhost
-    print("[INFO] FalkorDB host: localhost (local environment default)")
+    logger.info("FalkorDB host: localhost (local environment default)")
     return "localhost"
 
 
