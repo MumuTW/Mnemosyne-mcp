@@ -47,7 +47,7 @@ services:
       - "50051:50051"  # gRPC port
     env_file: .env
     environment:
-      - FALKORDB_HOST=falkordb
+      - RUNNING_IN_DOCKER=1
       - FALKORDB_PORT=6379
       - FALKORDB_DATABASE=mnemosyne
       - LOG_LEVEL=INFO
