@@ -284,7 +284,7 @@ class MCPTester:
                 print(f"⚠️ 清理過程警告: {e}")
                 try:
                     self.process.kill()
-                except:
+                except Exception:
                     pass
 
 

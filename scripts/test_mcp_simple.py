@@ -10,12 +10,12 @@ import asyncio
 import sys
 from pathlib import Path
 
-# 添加 src 到 Python 路徑
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 from mnemosyne.core.config import Settings
 from mnemosyne.mcp_adapter.grpc_bridge import GrpcBridge
 from mnemosyne.mcp_adapter.server import MnemosyneMCPServer
+
+# 添加 src 到 Python 路徑
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 async def test_grpc_bridge():
