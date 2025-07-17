@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 import grpc
 import structlog
+from google.protobuf import timestamp_pb2
 
 from ..core.config import Settings
 from ..drivers.falkordb_driver import FalkorDBDriver
@@ -75,9 +76,11 @@ class MnemosyneMCPService(mcp_pb2_grpc.MnemosyneMCPServicer):
                     "temperature": 0.7,
                     "max_tokens": 1000,
                     # 實際部署時需要設定 API_KEY
-                    "api_key": self.settings.security.api_key
-                    if hasattr(self.settings.security, "api_key")
-                    else None,
+                    "api_key": (
+                        self.settings.security.api_key
+                        if hasattr(self.settings.security, "api_key")
+                        else None
+                    ),
                 }
                 self.llm_provider = OpenAIProvider(llm_config)
                 await self.llm_provider.initialize()
@@ -95,6 +98,43 @@ class MnemosyneMCPService(mcp_pb2_grpc.MnemosyneMCPServicer):
                 self.logger.info("Database disconnected")
         except Exception as e:
             self.logger.error("Error during cleanup", error=str(e))
+
+    def HealthCheck(self, request, context):
+        """系統健康檢查 - 純連線測試"""
+        self.stats["total_requests"] += 1
+
+        try:
+            # 純粹的健康檢查，不涉及業務邏輯
+            self.logger.debug("HealthCheck called")
+
+            # 創建回應時間戳
+            timestamp = timestamp_pb2.Timestamp()
+            timestamp.GetCurrentTime()
+
+            response = mcp_pb2.HealthCheckResponse(
+                status=mcp_pb2.HealthCheckResponse.Status.SERVING,
+                message="gRPC service is healthy",
+                timestamp=timestamp,
+            )
+
+            self.stats["successful_requests"] += 1
+            return response
+
+        except Exception as e:
+            self.stats["failed_requests"] += 1
+            self.logger.error("HealthCheck failed", error=str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Health check failed: {str(e)}")
+
+            # 返回不健康狀態
+            timestamp = timestamp_pb2.Timestamp()
+            timestamp.GetCurrentTime()
+
+            return mcp_pb2.HealthCheckResponse(
+                status=mcp_pb2.HealthCheckResponse.Status.NOT_SERVING,
+                message=f"Service unhealthy: {str(e)}",
+                timestamp=timestamp,
+            )
 
     def IngestProject(self, request, context):
         """數據導入與管理 - 導入專案"""

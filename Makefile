@@ -1,6 +1,6 @@
 # Mnemosyne MCP - Development Makefile
 
-.PHONY: help install test lint format clean docker-up docker-down doctor serve
+.PHONY: help install test lint format clean docker-up docker-down doctor serve deploy
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "  docker-down - Stop Docker services"
 	@echo "  doctor      - Run system diagnostics"
 	@echo "  serve       - Start development server"
+	@echo "  deploy      - One-click deploy all services"
 	@echo "  cli         - Run CLI help"
 
 # Installation
@@ -117,3 +118,12 @@ sprint0-verify:
 	make doctor
 	@echo ""
 	@echo "🎉 Sprint 0 verification completed!"
+
+# One-click deploy: build & start all services
+deploy:
+	@echo "🚀 Building and starting all services..."
+	docker-compose up --build -d
+	@echo "✅ Services are running:"
+	@echo "  - FalkorDB UI:       http://localhost:3000"
+	@echo "  - MCP API Docs:      http://localhost:8000/docs"
+	@echo "  - MCP Health Check:  http://localhost:8000/health"

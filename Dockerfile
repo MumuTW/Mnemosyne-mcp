@@ -9,23 +9,16 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 安裝 Poetry
-RUN pip install poetry
+# 安裝 uv
+RUN pip install uv
 
-# 配置 Poetry
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VENV_IN_PROJECT=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
-# 複製 Poetry 配置文件
-COPY pyproject.toml poetry.lock* ./
-
-# 安裝依賴
-RUN poetry install --only=main && rm -rf $POETRY_CACHE_DIR
-
-# 複製應用程式碼
+# 複製專案配置和源碼
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
 COPY configs/ ./configs/
+
+# 安裝依賴（不包含開發依賴）
+RUN uv pip install --system -e .
 
 # 創建日誌目錄
 RUN mkdir -p /app/logs
@@ -42,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 啟動命令
-CMD ["poetry", "run", "uvicorn", "mnemosyne.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "mnemosyne.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

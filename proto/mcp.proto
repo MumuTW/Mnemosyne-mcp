@@ -9,6 +9,9 @@ import "google/protobuf/timestamp.proto";
 // 核心服務定義 (Core Service Definition)
 // ===================================================================
 service MnemosyneMCP {
+  // --- 系統診斷 (System Diagnostics) ---
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
   // --- 數據導入與管理 (Ingestion & Management) ---
   rpc IngestProject(IngestProjectRequest) returns (IngestProjectResponse);
   rpc GetIngestStatus(GetIngestStatusRequest) returns (IngestStatus);
@@ -29,6 +32,22 @@ service MnemosyneMCP {
 // ===================================================================
 // 數據結構定義 (Message Definitions)
 // ===================================================================
+
+// --- 系統診斷 ---
+message HealthCheckRequest {
+  // 空請求，純粹的連線測試
+}
+
+message HealthCheckResponse {
+  enum Status {
+    SERVING = 0;
+    NOT_SERVING = 1;
+    UNKNOWN = 2;
+  }
+  Status status = 1;
+  string message = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
 
 // --- 數據導入 ---
 message IngestProjectRequest {

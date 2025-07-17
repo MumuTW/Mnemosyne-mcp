@@ -2,7 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 
 import grpc
-import mcp_pb2 as mcp__pb2
+
+from . import mcp_pb2 as mcp__pb2
 
 GRPC_GENERATED_VERSION = "1.73.1"
 GRPC_VERSION = grpc.__version__
@@ -39,6 +40,12 @@ class MnemosyneMCPStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.HealthCheck = channel.unary_unary(
+            "/mnemosyne.mcp.v1.MnemosyneMCP/HealthCheck",
+            request_serializer=mcp__pb2.HealthCheckRequest.SerializeToString,
+            response_deserializer=mcp__pb2.HealthCheckResponse.FromString,
+            _registered_method=True,
+        )
         self.IngestProject = channel.unary_unary(
             "/mnemosyne.mcp.v1.MnemosyneMCP/IngestProject",
             request_serializer=mcp__pb2.IngestProjectRequest.SerializeToString,
@@ -95,6 +102,12 @@ class MnemosyneMCPServicer(object):
     ===================================================================
     """
 
+    def HealthCheck(self, request, context):
+        """--- 系統診斷 (System Diagnostics) ---"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
     def IngestProject(self, request, context):
         """--- 數據導入與管理 (Ingestion & Management) ---"""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -146,6 +159,11 @@ class MnemosyneMCPServicer(object):
 
 def add_MnemosyneMCPServicer_to_server(servicer, server):
     rpc_method_handlers = {
+        "HealthCheck": grpc.unary_unary_rpc_method_handler(
+            servicer.HealthCheck,
+            request_deserializer=mcp__pb2.HealthCheckRequest.FromString,
+            response_serializer=mcp__pb2.HealthCheckResponse.SerializeToString,
+        ),
         "IngestProject": grpc.unary_unary_rpc_method_handler(
             servicer.IngestProject,
             request_deserializer=mcp__pb2.IngestProjectRequest.FromString,
@@ -202,6 +220,36 @@ class MnemosyneMCP(object):
     核心服務定義 (Core Service Definition)
     ===================================================================
     """
+
+    @staticmethod
+    def HealthCheck(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            "/mnemosyne.mcp.v1.MnemosyneMCP/HealthCheck",
+            mcp__pb2.HealthCheckRequest.SerializeToString,
+            mcp__pb2.HealthCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True,
+        )
 
     @staticmethod
     def IngestProject(

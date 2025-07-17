@@ -1,0 +1,57 @@
+{
+  "name": "@mnemosyne/mcp-server",
+  "version": "0.1.0",
+  "description": "Mnemosyne MCP Server - AI-powered code analysis and knowledge graph search",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "mnemosyne-mcp-server": "./index.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "test": "node scripts/test.js",
+    "check-python": "node scripts/check-python.js",
+    "start": "node index.js",
+    "health-check": "node scripts/health-check.js"
+  },
+  "files": [
+    "index.js",
+    "scripts/",
+    "python/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "code-analysis",
+    "ai-tools",
+    "python",
+    "grpc",
+    "knowledge-graph",
+    "software-engineering"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MumuTW/mnemosyne-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MumuTW/mnemosyne-mcp/issues"
+  },
+  "homepage": "https://github.com/MumuTW/mnemosyne-mcp#readme",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^3.3.0",
+    "chalk": "^5.3.0"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"],
+  "author": "Mnemosyne Team",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/MumuTW"
+  }
+}

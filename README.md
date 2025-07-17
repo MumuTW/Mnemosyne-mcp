@@ -14,48 +14,137 @@ Mnemosyne MCP 是一個為 AI 代理和人類開發者設計的**「全知開發
 
 - Docker & Docker Compose
 - Python 3.10+
-- Poetry (用於開發)
+- uv (Python 套件管理工具)
 
-### 一鍵啟動
+### 🎯 極簡 4 步驟啟動
 
+**1️⃣ 克隆並設置開發環境**
 ```bash
-# 複製環境配置
-cp .env.example .env
+git clone https://github.com/your-org/mnemosyne-mcp.git
+cd mnemosyne-mcp
+make dev-setup
+```
+自動完成：建立虛擬環境、安裝依賴、生成 .env、建立 logs/ 目錄
 
-# 啟動所有服務
-docker-compose up -d
-
-# 檢查服務狀態
-docker-compose ps
+**2️⃣ 啟用虛擬環境**
+```bash
+source .venv/bin/activate
 ```
 
-服務啟動後，您可以訪問：
+**3️⃣ 設定 API 金鑰（可選但建議）**
+```bash
+cp .env.example .env
+# 編輯 .env，填入 OPENAI_API_KEY 或 OPENROUTER_API_KEY
+```
 
-- **API 服務**: http://localhost:8000
-- **健康檢查**: http://localhost:8000/health
-- **FalkorDB Browser**: http://localhost:3000
-- **API 文檔**: http://localhost:8000/docs
+**4️⃣ 一鍵啟動所有服務**
+```bash
+make deploy
+```
+自動完成：
+- 🏗️ 建構 Docker 映像
+- 📚 啟動 FalkorDB（圖形資料庫）
+- 🚀 啟動 FalkorDB UI（圖形可視化介面）
+- ⚡ 啟動 MCP API 服務（提供 /docs 和 /health）
 
-### 開發環境設置
+### 🔍 驗證服務狀態
+
+執行完畢後，可直接訪問：
+- **FalkorDB UI**: http://localhost:3000 — 圖譜可視化介面
+- **MCP API Docs**: http://localhost:8000/docs — Swagger API 文件
+- **健康檢查**: http://localhost:8000/health — 服務狀態檢查
+
+### 🎯 導入你的專案（可選）
 
 ```bash
-# 快速設置開發環境
-make dev-setup
+mnemo ingest --git https://github.com/example-org/example-repo
+```
 
-# 或手動安裝依賴
-pip3 install -r requirements-dev.txt
+查詢導入進度：
+```bash
+mnemo ingest-status <task_id>
+```
 
-# 運行系統診斷
-make doctor
+## 🐳 Docker 一鍵啟動方案
 
-# 啟動開發服務器
-make serve
+### 📋 前置需求
 
+確保專案根目錄包含以下檔案：
+- `docker-compose.yml` - 服務編排配置
+- `Dockerfile` - MCP 應用建置檔案
+- `.env` - 環境變數設定（包含 API 金鑰）
+
+### 🚀 一鍵啟動
+
+1. **確保 `.env` 包含必要設定**：
+   ```bash
+   # 至少需要其中一組
+   OPENAI_API_KEY=sk-xxx
+   # 或
+   OPENROUTER_API_KEY=or-xxx
+   ```
+
+2. **執行啟動指令**：
+   ```bash
+   docker-compose up --build
+   ```
+
+### 🔍 驗證狀態
+
+啟動完成後，可訪問：
+- **圖形 UI**: http://localhost:3000 — FalkorDB 圖譜可視化介面
+- **API 文檔**: http://localhost:8000/docs — Swagger API 文件
+- **健康檢查**: http://localhost:8000/health — 服務狀態檢查
+
+### 💡 Docker 方案優勢
+
+- **資料持久化**: 使用 `falkor-data` volume 確保重啟不丟資料
+- **環境變數管理**: 統一在 `.env` 設定所有配置
+- **可擴展性**: 可輕鬆加入 Redis 叢集、副本服務或其他 microservice
+- **一鍵部署**: 支援 CI/CD 接入，適合開發/staging/production 環境
+
+## 🛠️ 一鍵部署指令
+
+**🎯 最快速的啟動方式**
+
+1️⃣ **確保你已填寫 `.env`**（或複製 `.env.example`）：
+```bash
+cp .env.example .env
+```
+
+2️⃣ **執行部署指令**：
+```bash
+make deploy
+```
+
+3️⃣ **檢查服務是否成功**：
+- 📊 **FalkorDB UI**: http://localhost:3000
+- 📚 **MCP API Docs**: http://localhost:8000/docs
+- ✅ **健康檢查**: http://localhost:8000/health
+
+---
+
+## ✅ 最終使用體驗（4 行指令完成部署）
+
+```bash
+git clone https://github.com/your-org/mnemosyne-mcp.git
+cd mnemosyne-mcp
+make dev-setup && source .venv/bin/activate
+make deploy
+```
+🎉 **完整的知識圖譜系統 + API + UI 一次啟動完成！**
+
+### 其他開發指令
+
+```bash
 # 運行測試
 make test
 
 # 代碼格式化
 make format
+
+# CI 流程檢查
+make ci-check
 
 # 驗證 Sprint 0 完成狀態
 make sprint0-verify

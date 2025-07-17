@@ -20,7 +20,7 @@ services:
     networks:
       - mnemosyne-network
 
-  falkordb-browser:
+  falkor-ui:
     image: falkordb/falkordb-browser:latest
     container_name: mnemosyne-browser
     ports:
@@ -64,7 +64,7 @@ services:
       retries: 3
       start_period: 40s
 
-  mnemosyne-api:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -72,6 +72,7 @@ services:
     ports:
       - "8000:8000"
       - "50051:50051"  # gRPC port
+    env_file: .env
     environment:
       - FALKORDB_HOST=falkordb
       - FALKORDB_PORT=6379

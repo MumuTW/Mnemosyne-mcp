@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mnemosyne": {
+      "command": "mnemo",
+      "args": ["serve-mcp"],
+      "env": {
+        "PYTHONPATH": "/Users/您的用戶名/Documents/project/Mnemosyne-mcp/src"
+      }
+    }
+  }
+}
