@@ -4,7 +4,7 @@ MCP 主服務 gRPC 實作
 實作 MnemosyneMCP 服務的核心業務邏輯。
 """
 
-import time
+import uuid
 from typing import Any, Dict, Optional
 
 import grpc
@@ -69,7 +69,17 @@ class MnemosyneMCPService(mcp_pb2_grpc.MnemosyneMCPServicer):
 
             # 初始化 LLM Provider
             if not self.llm_provider:
-                self.llm_provider = OpenAIProvider({})
+                # TODO: 從 Settings 中獲取 LLM 配置
+                llm_config = {
+                    "model": "gpt-3.5-turbo",
+                    "temperature": 0.7,
+                    "max_tokens": 1000,
+                    # 實際部署時需要設定 API_KEY
+                    "api_key": self.settings.security.api_key
+                    if hasattr(self.settings.security, "api_key")
+                    else None,
+                }
+                self.llm_provider = OpenAIProvider(llm_config)
                 await self.llm_provider.initialize()
                 self.logger.info("LLM Provider initialized successfully")
 
@@ -96,7 +106,7 @@ class MnemosyneMCPService(mcp_pb2_grpc.MnemosyneMCPServicer):
             # TODO: 實作專案導入邏輯
             # 這將在後續的 ECL 整合中實作
 
-            task_id = f"task_{int(time.time())}"
+            task_id = f"task_{uuid.uuid4()}"
 
             self.stats["successful_requests"] += 1
 
