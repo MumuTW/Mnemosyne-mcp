@@ -1,26 +1,22 @@
-# Mnemosyne MCP Server Python Dependencies
+# Mnemosyne MCP Server Python Dependencies (Fallback)
+# 注意：這是後備依賴列表，應該使用 pyproject.toml 作為主要來源
+
 # Core MCP framework
-fastmcp>=2.0.0
+fastmcp>=0.1.0
 
 # Data validation and settings
-pydantic>=2.0.0
+pydantic>=2.5.0
 pydantic-settings>=2.0.0
 
 # gRPC communication
-grpcio>=1.50.0
-grpcio-tools>=1.50.0
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
 
 # Structured logging
-structlog>=23.0.0
+structlog>=23.2.0
 
 # Async event loop (Unix only)
 uvloop>=0.17.0;platform_system!="Windows"
 
 # HTTP client
 httpx>=0.24.0
-
-# Optional: faster JSON processing
-orjson>=3.8.0
-
-# Type annotations for older Python versions
-typing-extensions>=4.0.0;python_version<"3.11"

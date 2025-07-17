@@ -133,7 +133,9 @@ class HealthChecker {
 
     if (!allAvailable) {
       const missing = packageResults.filter(p => !p.available).map(p => p.name);
-      this.log(`Install missing packages: ${this.pythonPath} -m pip install ${missing.join(' ')}`, 'info');
+      this.log(`Install missing packages:`, 'info');
+      this.log(`  Recommended: ${this.pythonPath} -m pip install -e . (from project root)`, 'info');
+      this.log(`  Alternative: ${this.pythonPath} -m pip install ${missing.join(' ')}`, 'info');
     }
 
     return allAvailable;

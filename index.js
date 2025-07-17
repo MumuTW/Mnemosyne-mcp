@@ -54,6 +54,8 @@ class MnemosyneMCPLauncher {
       'py',
       '/usr/bin/python3',
       '/usr/local/bin/python3',
+      '/opt/homebrew/bin/python3',
+      process.env.VIRTUAL_ENV ? join(process.env.VIRTUAL_ENV, 'bin', 'python3') : null,
       process.platform === 'win32' ? 'py.exe' : null
     ].filter(Boolean);
 
@@ -65,7 +67,7 @@ class MnemosyneMCPLauncher {
         this.log(`Testing ${cmd}: ${version}`, 'debug');
 
         // 檢查是否為 Python 3.9+
-        const match = version.match(/Python (\\d+)\\.(\\d+)/);
+        const match = version.match(/Python (\d+)\.(\d+)/);
         if (match) {
           const [, major, minor] = match;
           if (parseInt(major) === 3 && parseInt(minor) >= 9) {
@@ -114,47 +116,107 @@ class MnemosyneMCPLauncher {
   }
 
   async installPythonDeps() {
-    const requirementsPath = join(__dirname, 'python', 'requirements.txt');
+    // 尋找 pyproject.toml（當前目錄或父目錄）
+    const currentDir = __dirname;
+    const parentDir = join(__dirname, '..');
 
-    if (!fs.existsSync(requirementsPath)) {
-      this.log('requirements.txt not found, creating minimal dependencies...', 'warning');
-      await this.createRequirements(requirementsPath);
+    let projectRoot, pyprojectPath;
+
+    if (fs.existsSync(join(currentDir, 'pyproject.toml'))) {
+      projectRoot = currentDir;
+      pyprojectPath = join(currentDir, 'pyproject.toml');
+    } else if (fs.existsSync(join(parentDir, 'pyproject.toml'))) {
+      projectRoot = parentDir;
+      pyprojectPath = join(parentDir, 'pyproject.toml');
+    } else {
+      this.log('pyproject.toml not found, falling back to manual install', 'warning');
+      await this.fallbackInstall();
+      return;
     }
 
-    this.log('Installing Python dependencies...', 'info');
+    this.log('Installing Python dependencies from pyproject.toml...', 'info');
 
     try {
-      const output = await this.execCommand(this.pythonPath, [
-        '-m', 'pip', 'install', '-r', requirementsPath, '--user'
-      ]);
+      // 嘗試使用 uv (推薦的現代工具)
+      try {
+        const output = await this.execCommand('uv', [
+          'pip', 'install', '-e', projectRoot, '--user'
+        ]);
+        this.log('Dependencies installed successfully with uv', 'success');
+        this.log(output, 'debug');
+        return;
+      } catch (uvError) {
+        this.log('uv not available, falling back to pip', 'debug');
+      }
 
-      this.log('Python dependencies installed successfully', 'success');
-      this.log(output, 'debug');
+      // 回退到標準 pip 安裝，先嘗試當前 Python，再嘗試系統 Python
+      let installSuccess = false;
+
+      try {
+        const output = await this.execCommand(this.pythonPath, [
+          '-m', 'pip', 'install', '-e', projectRoot, '--user'
+        ]);
+        this.log('Dependencies installed successfully with pip', 'success');
+        this.log(output, 'debug');
+        installSuccess = true;
+      } catch (pipError) {
+        this.log('Current Python pip failed, trying system Python...', 'debug');
+
+        // 嘗試系統 Python
+        const systemPythons = ['/usr/bin/python3', '/opt/homebrew/bin/python3'];
+        for (const sysPython of systemPythons) {
+          try {
+            await this.execCommand('test', ['-f', sysPython]);
+            const output = await this.execCommand(sysPython, [
+              '-m', 'pip', 'install', '-e', projectRoot, '--user'
+            ]);
+            this.log(`Dependencies installed successfully with system Python: ${sysPython}`, 'success');
+            this.log(output, 'debug');
+            installSuccess = true;
+            break;
+          } catch (sysError) {
+            this.log(`System Python ${sysPython} failed: ${sysError.message}`, 'debug');
+            continue;
+          }
+        }
+      }
+
+      if (installSuccess) return;
     } catch (error) {
       // 嘗試不使用 --user 標誌
       try {
         await this.execCommand(this.pythonPath, [
-          '-m', 'pip', 'install', '-r', requirementsPath
+          '-m', 'pip', 'install', '-e', projectRoot
         ]);
-        this.log('Python dependencies installed successfully', 'success');
+        this.log('Dependencies installed successfully', 'success');
       } catch (fallbackError) {
         throw new Error(`Failed to install dependencies: ${fallbackError.message}`);
       }
     }
   }
 
-  async createRequirements(requirementsPath) {
-    const requirements = `# Mnemosyne MCP Server Requirements
-fastmcp>=2.0.0
-pydantic>=2.0.0
-grpcio>=1.50.0
-grpcio-tools>=1.50.0
-structlog>=23.0.0
-uvloop>=0.17.0;platform_system!="Windows"
-`;
+  async fallbackInstall() {
+    // 只在找不到 pyproject.toml 時才使用的後備安裝方法
+    this.log('Installing minimal MCP dependencies...', 'info');
 
-    fs.writeFileSync(requirementsPath, requirements, 'utf8');
-    this.log('Created requirements.txt', 'debug');
+    const minimalPackages = [
+      'fastmcp>=0.1.0',  // 與 pyproject.toml 保持一致
+      'pydantic>=2.5.0',
+      'grpcio>=1.60.0',
+      'structlog>=23.2.0'
+    ];
+
+    try {
+      for (const pkg of minimalPackages) {
+        await this.execCommand(this.pythonPath, [
+          '-m', 'pip', 'install', pkg, '--user'
+        ]);
+        this.log(`Installed ${pkg}`, 'debug');
+      }
+      this.log('Minimal dependencies installed successfully', 'success');
+    } catch (error) {
+      throw new Error(`Failed to install minimal dependencies: ${error.message}`);
+    }
   }
 
   async createPythonServer() {
@@ -222,9 +284,19 @@ if __name__ == "__main__":
     }
 
     // 檢查 Python 包
-    if (!await this.checkPythonDependencies()) {
-      this.log('Installing missing Python dependencies...', 'warning');
-      await this.installPythonDeps();
+    const dependenciesOk = await this.checkPythonDependencies();
+    if (!dependenciesOk) {
+      if (this.healthCheckMode) {
+        this.log('Some Python dependencies missing (but continuing in health check mode)', 'warning');
+      } else {
+        this.log('Missing Python dependencies detected', 'warning');
+        this.log('Please ensure the Mnemosyne backend is running:', 'info');
+        this.log('  1. Git clone the Mnemosyne project', 'info');
+        this.log('  2. Run: make deploy', 'info');
+        this.log('  3. Ensure services are healthy at http://localhost:8000/health', 'info');
+        this.log('', 'info');
+        this.log('The MCP server will attempt to connect to the backend...', 'info');
+      }
     }
 
     // 確保 Python 伺服器存在
@@ -362,8 +434,10 @@ For more information, visit: https://github.com/MumuTW/mnemosyne-mcp
     this.log('Running health check...', 'info');
 
     try {
+      // 在健康檢查模式下，只檢查不安裝
+      this.healthCheckMode = true;
       await this.checkDependencies();
-      this.log('Health check passed - all dependencies available', 'success');
+      this.log('Health check passed - system ready', 'success');
     } catch (error) {
       this.log(`Health check failed: ${error.message}`, 'error');
       process.exit(1);

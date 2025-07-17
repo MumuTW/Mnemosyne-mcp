@@ -36,12 +36,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/MumuTW/mnemosyne-mcp.git"
+    "url": "https://github.com/MumuTW/Mnemosyne-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/MumuTW/mnemosyne-mcp/issues"
+    "url": "https://github.com/MumuTW/Mnemosyne-mcp/issues"
   },
-  "homepage": "https://github.com/MumuTW/mnemosyne-mcp#readme",
+  "homepage": "https://github.com/MumuTW/Mnemosyne-mcp#readme",
   "license": "MIT",
   "dependencies": {
     "node-fetch": "^3.3.0",

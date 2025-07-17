@@ -86,7 +86,38 @@ class PostInstallSetup {
     return true;
   }
 
+  extractRequirementsFromPyproject(content) {
+    // 從 pyproject.toml 提取依賴列表並轉換為 requirements.txt 格式
+    const lines = content.split('\n');
+    let inDependencies = false;
+    const deps = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (trimmed === 'dependencies = [') {
+        inDependencies = true;
+        continue;
+      }
+
+      if (inDependencies && trimmed === ']') {
+        break;
+      }
+
+      if (inDependencies && trimmed.startsWith('"') && trimmed.endsWith('",')) {
+        // 提取依賴名稱 (移除引號和逗號)
+        const dep = trimmed.slice(1, -2);
+        deps.push(dep);
+      }
+    }
+
+    const header = `# Mnemosyne MCP Server Python Dependencies\n# 自動從 pyproject.toml 生成\n# 請勿直接編輯此文件，修改 pyproject.toml 後重新安裝包\n\n`;
+    return header + deps.join('\n') + '\n';
+  }
+
   async createRequirements() {
+    // 從 pyproject.toml 動態生成 requirements.txt
+    const pyprojectPath = join(projectRoot, '..', 'pyproject.toml');
     const requirementsPath = join(projectRoot, 'python', 'requirements.txt');
 
     // 確保 python 目錄存在
@@ -96,34 +127,48 @@ class PostInstallSetup {
       this.log('Created python directory', 'debug');
     }
 
+    // 嘗試從 pyproject.toml 讀取依賴
+    if (fs.existsSync(pyprojectPath)) {
+      try {
+        const pyprojectContent = fs.readFileSync(pyprojectPath, 'utf8');
+        const requirements = this.extractRequirementsFromPyproject(pyprojectContent);
+
+        fs.writeFileSync(requirementsPath, requirements, 'utf8');
+        this.log('Generated requirements.txt from pyproject.toml', 'success');
+        return requirementsPath;
+      } catch (error) {
+        this.log('Failed to parse pyproject.toml, using fallback', 'warning');
+      }
+    }
+
+    // 後備方案：創建基本的 requirements.txt
     if (!fs.existsSync(requirementsPath)) {
-      const requirements = `# Mnemosyne MCP Server Python Dependencies
+      const requirements = `# Mnemosyne MCP Server Python Dependencies (Fallback)
+# 注意：這是後備依賴列表，應該使用 pyproject.toml 作為主要來源
+
 # Core MCP framework
-fastmcp>=2.0.0
+fastmcp>=0.1.0
 
 # Data validation and settings
-pydantic>=2.0.0
+pydantic>=2.5.0
 pydantic-settings>=2.0.0
 
 # gRPC communication
-grpcio>=1.50.0
-grpcio-tools>=1.50.0
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
 
 # Structured logging
-structlog>=23.0.0
+structlog>=23.2.0
 
 # Async event loop (Unix only)
 uvloop>=0.17.0;platform_system!="Windows"
 
 # HTTP client
 httpx>=0.24.0
-
-# Optional: faster JSON processing
-orjson>=3.8.0
 `;
 
       fs.writeFileSync(requirementsPath, requirements, 'utf8');
-      this.log('Created requirements.txt', 'success');
+      this.log('Created fallback requirements.txt', 'warning');
     }
 
     return requirementsPath;
@@ -192,7 +237,8 @@ async def main():
     except ImportError as e:
         print(f"Import error: {e}", file=sys.stderr)
         print("Please ensure all Python dependencies are installed", file=sys.stderr)
-        print("Run: pip install -r python/requirements.txt", file=sys.stderr)
+        print("Run: pip install -e . (from project root with pyproject.toml)", file=sys.stderr)
+        print("Or: pip install -r python/requirements.txt", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"Server error: {e}", file=sys.stderr)
@@ -228,7 +274,8 @@ if __name__ == "__main__":
       return;
     }
 
-    const requirementsPath = await this.createRequirements();
+    // 優先使用 pyproject.toml，如果不存在才創建 requirements.txt
+    const pyprojectPath = join(projectRoot, '..', 'pyproject.toml');
 
     this.log('Installing Python dependencies (this may take a moment)...');
 
@@ -241,7 +288,33 @@ if __name__ == "__main__":
         this.log('Could not upgrade pip, continuing...', 'debug');
       }
 
-      // 安裝依賴 (使用 --user 避免權限問題)
+      // 嘗試使用 uv (現代 Python 工具)
+      try {
+        await this.execCommand('uv', [
+          'pip', 'install', '-e', join(projectRoot, '..'), '--user'
+        ]);
+        this.log('Python dependencies installed successfully with uv', 'success');
+        return;
+      } catch (uvError) {
+        this.log('uv not available, falling back to pip', 'debug');
+      }
+
+      // 如果有 pyproject.toml，使用 pip 進行可編輯安裝
+      if (fs.existsSync(pyprojectPath)) {
+        try {
+          await this.execCommand(this.pythonPath, [
+            '-m', 'pip', 'install', '-e', join(projectRoot, '..'), '--user'
+          ]);
+          this.log('Python dependencies installed successfully from pyproject.toml', 'success');
+          return;
+        } catch (error) {
+          this.log('Failed to install from pyproject.toml, trying requirements.txt', 'warning');
+        }
+      }
+
+      // 後備方案：使用 requirements.txt
+      const requirementsPath = await this.createRequirements();
+
       const installArgs = [
         '-m', 'pip', 'install',
         '-r', requirementsPath,
@@ -250,11 +323,12 @@ if __name__ == "__main__":
       ];
 
       await this.execCommand(this.pythonPath, installArgs);
-      this.log('Python dependencies installed successfully', 'success');
+      this.log('Python dependencies installed successfully from requirements.txt', 'success');
 
     } catch (error) {
       // 如果 --user 失敗，嘗試不使用它
       try {
+        const requirementsPath = await this.createRequirements();
         const fallbackArgs = [
           '-m', 'pip', 'install',
           '-r', requirementsPath,
@@ -267,7 +341,13 @@ if __name__ == "__main__":
       } catch (fallbackError) {
         this.log('Failed to install Python dependencies', 'warning');
         this.log('You may need to install them manually:', 'info');
-        this.log(`  ${this.pythonPath} -m pip install -r ${requirementsPath}`, 'info');
+
+        if (fs.existsSync(pyprojectPath)) {
+          this.log(`  ${this.pythonPath} -m pip install -e ${join(projectRoot, '..')}`, 'info');
+        } else {
+          const requirementsPath = await this.createRequirements();
+          this.log(`  ${this.pythonPath} -m pip install -r ${requirementsPath}`, 'info');
+        }
 
         if (this.verbose) {
           this.log(`Error details: ${fallbackError.message}`, 'debug');

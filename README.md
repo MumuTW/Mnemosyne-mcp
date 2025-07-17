@@ -10,8 +10,31 @@ Mnemosyne MCP 是一個為 AI 代理和人類開發者設計的**「全知開發
 
 ## 🚀 快速開始
 
-### 前置需求
+### 安裝選項
 
+#### 方式一：一鍵安裝（推薦）
+
+```bash
+# 使用 Claude Code 一鍵安裝
+claude mcp add mnemosyne-mcp npx @MumuTW/Mnemosyne-mcp
+
+# 或手動安裝
+npm install -g @mnemosyne/mcp-server
+
+# 手動配置 Claude Desktop（~/.claude/claude_desktop_config.json）
+{
+  "mcpServers": {
+    "mnemosyne": {
+      "command": "npx",
+      "args": ["@mnemosyne/mcp-server"]
+    }
+  }
+}
+```
+
+#### 方式二：原始碼開發
+
+前置需求：
 - Docker & Docker Compose
 - Python 3.10+
 - uv (Python 套件管理工具)
@@ -196,15 +219,15 @@ src/mnemosyne/
 
 ```bash
 # 運行所有測試
-poetry run pytest
+make test
 
 # 運行特定類型的測試
-poetry run pytest -m unit
-poetry run pytest -m integration
-poetry run pytest -m e2e
+uv run pytest -m unit
+uv run pytest -m integration
+uv run pytest -m e2e
 
 # 生成覆蓋率報告
-poetry run pytest --cov=src/mnemosyne --cov-report=html
+make test-cov
 ```
 
 ## 📝 文檔

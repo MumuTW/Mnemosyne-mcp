@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'  # deprecated
 
 services:
   falkordb:
@@ -10,7 +10,7 @@ services:
       - falkordb_data:/data
       - ./scripts/seed.cypher:/docker-entrypoint-initdb.d/seed.cypher:ro
     environment:
-      - FALKORDB_ARGS=--loadmodule /usr/lib/redis/modules/falkordb.so
+      - FALKORDB_ARGS=
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -34,35 +34,8 @@ services:
     networks:
       - mnemosyne-network
 
-  mcp-atlassian:
-    image: ghcr.io/sooperset/mcp-atlassian:latest
-    container_name: mnemosyne-mcp-atlassian
-    ports:
-      - "8001:8001"
-    environment:
-      - MCP_TRANSPORT=http
-      - MCP_HOST=0.0.0.0
-      - MCP_PORT=8001
-      - READ_ONLY_MODE=true
-      - MCP_VERBOSE=false
-      - MCP_LOGGING_STDOUT=true
-      - CONFLUENCE_URL=${CONFLUENCE_URL:-}
-      - CONFLUENCE_USERNAME=${CONFLUENCE_USERNAME:-}
-      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN:-}
-      - JIRA_URL=${JIRA_URL:-}
-      - JIRA_USERNAME=${JIRA_USERNAME:-}
-      - JIRA_API_TOKEN=${JIRA_API_TOKEN:-}
-      - JIRA_PROJECTS_FILTER=${JIRA_PROJECTS_FILTER:-}
-      - CONFLUENCE_SPACES_FILTER=${CONFLUENCE_SPACES_FILTER:-}
-      - ENABLED_TOOLS=${ENABLED_TOOLS:-confluence_search,jira_search,jira_get_issue}
-    networks:
-      - mnemosyne-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+# MCP Atlassian service temporarily disabled
+  # Will be re-enabled in future versions
 
   app:
     build:
@@ -79,11 +52,9 @@ services:
       - FALKORDB_DATABASE=mnemosyne
       - LOG_LEVEL=INFO
       - ENVIRONMENT=development
-      - MCP_ATLASSIAN_URL=http://mcp-atlassian:8001
+# MCP_ATLASSIAN_URL temporarily disabled
     depends_on:
       falkordb:
-        condition: service_healthy
-      mcp-atlassian:
         condition: service_healthy
     volumes:
       - ./configs:/app/configs:ro

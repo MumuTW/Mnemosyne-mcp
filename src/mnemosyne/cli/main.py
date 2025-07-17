@@ -11,10 +11,25 @@ from pathlib import Path
 from typing import Optional
 
 import click
+from dotenv import load_dotenv
 
 from ..core.config import get_settings, validate_config
 from ..core.logging import setup_logging
 from ..drivers.falkordb_driver import FalkorDBDriver
+
+
+# 確保能從工作目錄或其父層正確載入 .env
+def load_env_safely():
+    search_root = Path.cwd()
+    for i in range(5):  # 限制最多往上 5 層
+        env_file = search_root / ".env"
+        if env_file.exists():
+            load_dotenv(dotenv_path=env_file, override=True)
+            break
+        search_root = search_root.parent
+
+
+load_env_safely()
 
 
 async def test_llm_connection():
