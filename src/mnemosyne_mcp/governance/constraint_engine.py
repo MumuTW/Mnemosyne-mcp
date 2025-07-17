@@ -9,6 +9,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
+import structlog
+
 from .models import (
     Constraint,
     ConstraintType,
@@ -16,6 +18,8 @@ from .models import (
     Violation,
     ViolationLocation,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 class Rule(ABC):
@@ -152,18 +156,18 @@ class ConstraintEngine:
                 task = rule.check(file_path, ast_data)
                 tasks.append(task)
             except Exception as e:
-                print(f"警告: 無法創建規則 {constraint.id}: {e}")
+                logger.warning(f"無法創建規則 {constraint.id}: {e}")
 
         # 等待所有檢查完成
         if tasks:
             violations_lists = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for violations in violations_lists:
-                if isinstance(violations, Exception):
-                    print(f"警告: 規則檢查失敗: {violations}")
+            for result_or_exc in violations_lists:
+                if isinstance(result_or_exc, Exception):
+                    logger.warning(f"規則檢查失敗: {result_or_exc}")
                     continue
 
-                for violation in violations:
+                for violation in result_or_exc:
                     result.add_violation(violation)
 
         # 設置結果狀態

@@ -80,7 +80,7 @@ class MCPGrpcServer:
         try:
             if self.server:
                 self.logger.info("Stopping gRPC server...")
-                self.server.stop(grace=5)
+                await asyncio.to_thread(self.server.stop, grace=5)
 
             if self.service:
                 await self.service.cleanup()
@@ -93,7 +93,7 @@ class MCPGrpcServer:
     async def wait_for_termination(self) -> None:
         """等待伺服器終止"""
         if self.server:
-            self.server.wait_for_termination()
+            await asyncio.to_thread(self.server.wait_for_termination)
 
     def get_server_stats(self) -> dict:
         """獲取伺服器統計信息"""

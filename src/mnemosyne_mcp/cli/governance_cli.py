@@ -13,7 +13,13 @@ from typing import Dict, List, Optional
 import click
 
 from ..governance.constraint_engine import ConstraintEngine
-from ..governance.models import Constraint, Severity, ValidationResult
+from ..governance.models import (
+    Constraint,
+    ConstraintType,
+    RuleConfig,
+    Severity,
+    ValidationResult,
+)
 
 
 class OutputFormatter:
@@ -121,7 +127,6 @@ class GovernanceCLI:
 
     async def _load_default_constraints(self):
         """載入默認約束"""
-        from ..governance.models import ConstraintType, RuleConfig, Severity
 
         # 添加默認的架構約束
         arch_constraint = Constraint(
